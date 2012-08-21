@@ -11,6 +11,7 @@ use Getopt::Long;
 use File::Basename;
 use Data::Printer;
 use autodie;
+use feature 'say';
 
 #options/defaults
 my ( $fq_in, $barcode, $sample_id, $list, $out_dir, $notrim, $help );
@@ -31,17 +32,20 @@ print_usage() and exit unless defined $fq_in and defined $barcode;
 print_usage() and exit unless defined $sample_id or defined $list;
 
 #gather barcodes to search for
-my @barcode_list;
+my %barcode_table;
 if ($list) {
     open my $barcode_list_fh, '<', $barcode;
-    while ( my $line = <$barcode_list_fh> ) {
-        chomp $line;
-        push @barcode_list, [ split /\t/, $line ];
-    }
+    %barcode_table = map { chomp; split /\t/ } <$barcode_list_fh>
     close $barcode_list_fh;
-    # $barcode = basename($barcode);
 }
-else { push @barcode_list, [ $sample_id, $barcode ]; }
+else { $barcode_table{$barcode} = $sample_id; }
+
+
+# p %barcode_table;
+
+# for (keys %barcode_table) {
+#     say $_ . " is " . $barcode_table{$_};
+# }
 
 my ( $filename, $directory, $suffix ) = fileparse( $fq_in, ".f(ast)?q" );
 $directory = $outdir if defined $outdir;
@@ -49,7 +53,7 @@ $directory = $outdir if defined $outdir;
 
 
 
-my $fq_out = $directories . $sample_id . ".fq";
+my $fq_out = $directories . $sample_id . ".fq";  # one for each
 
 open $fq_in_fh,  "<", $fq_in;
 open $fq_out_fh, ">", $fq_out;
