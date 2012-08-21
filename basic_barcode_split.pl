@@ -10,16 +10,17 @@ use warnings;
 use Getopt::Long;
 use File::Basename;
 use Data::Printer;
+use autodie;
 
 #options/defaults
-my ( $fq_in, $barcode, $sample_id, $list, $help );
-my $out_dir = "./";
+my ( $fq_in, $barcode, $sample_id, $list, $out_dir, $notrim, $help );
 my $options = GetOptions(
     "fq_in=s"     => \$fq_in,
     "barcode=s"   => \$barcode,
     "sample_id=s" => \$sample_id,
     "list"        => \$list,
     "out_dir=s"   => \$out_dir,
+    "notrim"      => \$notrim,
     "help"        => \$help,
 );
 
@@ -42,27 +43,33 @@ if ($list) {
 }
 else { push @barcode_list, [ $sample_id, $barcode ]; }
 
-my ($filename, $directories, $suffix) = fileparse($fq_in, "(.fq)|(.fastq)");
-my $fq_out = $directories . $filename . ".$barcode" . $suffix;
+my ( $filename, $directory, $suffix ) = fileparse( $fq_in, ".f(ast)?q" );
+$directory = $outdir if defined $outdir;
 
-open (FQ_IN, $fq_in) or die "Can't open $fq_in";
-open (FQ_OUT, ">$fq_out") or die "Can't open $fq_out";
+
+
+
+my $fq_out = $directories . $sample_id . ".fq";
+
+open $fq_in_fh,  "<", $fq_in;
+open $fq_out_fh, ">", $fq_out;
 
 my $count = 0;
-while (my $read_id = <FQ_IN>) {
-	my $seq = <FQ_IN>;
+while (my $read_id = <$fq_in_fh>) {
+	my $seq = <$fq_in_fh>;
 	if ($seq =~ m/^$barcode/) {
-		print FQ_OUT $read_id . $seq . <FQ_IN> . <FQ_IN>;
+    $seq = substr $seq, $barcode_length unless $notrim;
+		print $fq_out_fh $read_id . $seq . <$fq_in_fh> . <$fq_in_fh>;
 		$count++;
 	}else{
-		<FQ_IN>, <FQ_IN>;
+		<$fq_in_fh>, <$fq_in_fh>;
 	}
 }
 
 print "\n\tTotal # of reads with $barcode barcode = ", $count, "\n\n";
 
-close (FQ_IN);
-close (FQ_OUT);
+close ($fq_in_fh);
+close ($fq_out_fh);
 
 
 
