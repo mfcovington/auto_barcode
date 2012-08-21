@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# basic_barcode_split.v01.pl
+# basic_barcode_split.pl
 # Mike Covington
 # created: 2012-02-21
 #
@@ -12,6 +12,11 @@ use feature 'say';
 use Getopt::Long;
 use File::Basename;
 use List::Util qw(min max);
+
+###TODO:
+#check that barcodes are comprosed of ACGT
+#update usage statement
+#incorporate 'barcode_psychic.pl' functionality
 
 #options/defaults
 my ( $fq_in, $barcode, $sample_id, $list, $outdir, $notrim, $help );
@@ -45,7 +50,7 @@ if ($list) {
 }
 else { $barcode_table{$barcode} = [ $sample_id, 0 ]; }
 
-#check length of barcodes
+#check lengths of barcodes
 my $min_length = min map { length } keys %barcode_table;
 my $max_length = max map { length } keys %barcode_table;
 die "Unexpected variation in barcode length (min=$min_length, max=$max_length)"
@@ -91,12 +96,18 @@ say "barcode\tsample_id\tcount";
 map {
     say $_ . "\t"
       . $barcode_table{$_}->{id} . "\t"
-      . $barcode_table{$_}->{count}
+      . commify( $barcode_table{$_}->{count} )
 } keys %barcode_table;
-say "matched\t" . $total_matched;
-say "none\t"    . $total_unmatched;
+say "matched\t" . commify($total_matched);
+say "none\t"    . commify($total_unmatched);
 
 exit;
+
+sub commify {
+    local $_  = shift;
+    1 while s/^([-+]?\d+)(\d{3})/$1,$2/;
+    return $_;
+}
 
 sub print_usage {
     warn <<"EOF";
@@ -130,12 +141,3 @@ EOF
 }
 
 exit;
-
-
-###CHALLENGES:
-# 1. Alter the script to trim the barcode from the reads after parsing. (hint: don't forget to trim the quality scores and the 'T' following the barcode)
-#		Hint: The substr function is handy sometimes.
-# 2. Alter the script so that it reads multiple barcodes from a file (barcode.csv) or the command line and parses for each barcode.
-#		Hint #1: Use the split function to parse the lines of the barcode file.
-#		Hint #2: Of the two main ways to organize your program, one should be much faster than the other (especially for large FASTQ files).
-#				 Think about what might be the best approach before you start writing your script. 
