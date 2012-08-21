@@ -35,45 +35,54 @@ print_usage() and exit unless defined $sample_id or defined $list;
 my %barcode_table;
 if ($list) {
     open my $barcode_list_fh, '<', $barcode;
-    %barcode_table = map { chomp; split /\t/ } <$barcode_list_fh>
+    %barcode_table =
+      map {
+        chomp;
+        my @delim = split /\t/;
+        ( $delim[0], { 'id' => $delim[1], 'fh' => 0 } )
+      } <$barcode_list_fh>;
     close $barcode_list_fh;
 }
-else { $barcode_table{$barcode} = $sample_id; }
+else { $barcode_table{$barcode} = [ $sample_id, 0 ]; }
 
 
-# p %barcode_table;
+p %barcode_table;
 
 # for (keys %barcode_table) {
-#     say $_ . " is " . $barcode_table{$_};
+#     say $_ . " id is " . $barcode_table{$_}->{id};
+#     say $_ . " fh is " . $barcode_table{$_}->{fh};
 # }
 
-my ( $filename, $directory, $suffix ) = fileparse( $fq_in, ".f(ast)?q" );
-$directory = $outdir if defined $outdir;
+# exit;
+
+
+# my ( $filename, $directory, $suffix ) = fileparse( $fq_in, ".f(ast)?q" );
+# $directory = $outdir if defined $outdir;
 
 
 
 
-my $fq_out = $directories . $sample_id . ".fq";  # one for each
+# my $fq_out = $directories . $sample_id . ".fq";  # one for each
 
-open $fq_in_fh,  "<", $fq_in;
-open $fq_out_fh, ">", $fq_out;
+# open $fq_in_fh,  "<", $fq_in;
+# open $fq_out_fh, ">", $fq_out;
 
-my $count = 0;
-while (my $read_id = <$fq_in_fh>) {
-	my $seq = <$fq_in_fh>;
-	if ($seq =~ m/^$barcode/) {
-    $seq = substr $seq, $barcode_length unless $notrim;
-		print $fq_out_fh $read_id . $seq . <$fq_in_fh> . <$fq_in_fh>;
-		$count++;
-	}else{
-		<$fq_in_fh>, <$fq_in_fh>;
-	}
-}
+# my $count = 0;
+# while (my $read_id = <$fq_in_fh>) {
+# 	my $seq = <$fq_in_fh>;
+# 	if ($seq =~ m/^$barcode/) {
+#     $seq = substr $seq, $barcode_length unless $notrim;
+# 		print $fq_out_fh $read_id . $seq . <$fq_in_fh> . <$fq_in_fh>;
+# 		$count++;
+# 	}else{
+# 		<$fq_in_fh>, <$fq_in_fh>;
+# 	}
+# }
 
-print "\n\tTotal # of reads with $barcode barcode = ", $count, "\n\n";
+# print "\n\tTotal # of reads with $barcode barcode = ", $count, "\n\n";
 
-close ($fq_in_fh);
-close ($fq_out_fh);
+# close ($fq_in_fh);
+# close ($fq_out_fh);
 
 
 
