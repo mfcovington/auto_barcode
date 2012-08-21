@@ -7,20 +7,20 @@
 #
 use strict;
 use warnings;
-use Getopt::Long;
-use File::Basename;
-use Data::Printer;
 use autodie;
 use feature 'say';
+use Getopt::Long;
+use File::Basename;
+use List::Util qw(min max);
 
 #options/defaults
-my ( $fq_in, $barcode, $sample_id, $list, $out_dir, $notrim, $help );
+my ( $fq_in, $barcode, $sample_id, $list, $outdir, $notrim, $help );
 my $options = GetOptions(
     "fq_in=s"     => \$fq_in,
     "barcode=s"   => \$barcode,
     "sample_id=s" => \$sample_id,
     "list"        => \$list,
-    "out_dir=s"   => \$out_dir,
+    "outdir=s"    => \$outdir,
     "notrim"      => \$notrim,
     "help"        => \$help,
 );
@@ -39,52 +39,64 @@ if ($list) {
       map {
         chomp;
         my @delim = split /\t/;
-        ( $delim[0], { 'id' => $delim[1], 'fh' => 0 } )
+        ( $delim[0], { 'id' => $delim[1], 'count' => 0 } )
       } <$barcode_list_fh>;
     close $barcode_list_fh;
 }
 else { $barcode_table{$barcode} = [ $sample_id, 0 ]; }
 
+#check length of barcodes
+my $min_length = min map { length } keys %barcode_table;
+my $max_length = max map { length } keys %barcode_table;
+die "Unexpected variation in barcode length (min=$min_length, max=$max_length)"
+  unless $min_length == $max_length;
+my $barcode_length = $max_length;
 
-p %barcode_table;
+#open all filehandles
+my ( $filename, $directory, $suffix ) = fileparse( $fq_in, ".f(ast)?q" );
+$directory = $outdir if defined $outdir;
+open my $fq_in_fh, "<", $fq_in;
+for ( keys %barcode_table ) {
+    my $fq_out = $directory . $barcode_table{$_}->{id} . ".fq";
+    open $barcode_table{$_}->{fh}, ">", $fq_out;
+}
 
-# for (keys %barcode_table) {
-#     say $_ . " id is " . $barcode_table{$_}->{id};
-#     say $_ . " fh is " . $barcode_table{$_}->{fh};
-# }
+#split and trim
+my $total_matched   = 0;
+my $total_unmatched = 0;
+while ( my $read_id = <$fq_in_fh> ) {
+    my $seq = <$fq_in_fh>;
+    my $cur_barcode = substr $seq, 0, $barcode_length;
+    if ( /^$cur_barcode/ ~~ %barcode_table ) {
+        $seq = substr $seq, $barcode_length + 1 unless $notrim;
+        my $qual_id = <$fq_in_fh>;
+        my $qual    = <$fq_in_fh>;
+        $qual = substr $qual, $barcode_length + 1 unless $notrim;
+        print { $barcode_table{$cur_barcode}->{fh} }
+          $read_id . $seq . $qual_id . $qual;
+        $barcode_table{$cur_barcode}->{count}++;
+        $total_matched++;
+    }
+    else {
+        <$fq_in_fh>, <$fq_in_fh>;
+        $total_unmatched++;
+    }
+}
+map { close $barcode_table{$_}->{fh} } keys %barcode_table;
 
-# exit;
+#summary
+say "Barcode spiltting sumary for $fq_in";
+say "-----------------------------" . "-" x length $fq_in;
+say "barcode\tsample_id\tcount";
+map {
+    say $_ . "\t"
+      . $barcode_table{$_}->{id} . "\t"
+      . $barcode_table{$_}->{count}
+} keys %barcode_table;
+say "matched\t" . $total_matched;
+say "none\t"    . $total_unmatched;
 
-
-# my ( $filename, $directory, $suffix ) = fileparse( $fq_in, ".f(ast)?q" );
-# $directory = $outdir if defined $outdir;
-
-
-
-
-# my $fq_out = $directories . $sample_id . ".fq";  # one for each
-
-# open $fq_in_fh,  "<", $fq_in;
-# open $fq_out_fh, ">", $fq_out;
-
-# my $count = 0;
-# while (my $read_id = <$fq_in_fh>) {
-# 	my $seq = <$fq_in_fh>;
-# 	if ($seq =~ m/^$barcode/) {
-#     $seq = substr $seq, $barcode_length unless $notrim;
-# 		print $fq_out_fh $read_id . $seq . <$fq_in_fh> . <$fq_in_fh>;
-# 		$count++;
-# 	}else{
-# 		<$fq_in_fh>, <$fq_in_fh>;
-# 	}
-# }
-
-# print "\n\tTotal # of reads with $barcode barcode = ", $count, "\n\n";
-
-# close ($fq_in_fh);
-# close ($fq_out_fh);
-
-
+exit;
 
 sub print_usage {
     warn <<"EOF";
@@ -101,8 +113,8 @@ OPTIONS  ###THIS NEEDS TO BE UPDATED###
   -b, --barcode   BARCODE   Specify barcode or list of barcodes to extract
   -s, --sample_id
   -l, --list                Indicates --barcode is a list of barcodes in a file
-  -o, --out_dir   DIR       Output file is saved in the specified directory
-                              (or same directory as IN.FASTQ, if --out_dir is not used)
+  -o, --outdir   DIR       Output file is saved in the specified directory
+                              (or same directory as IN.FASTQ, if --outdir is not used)
 
 OUTPUT  ###THIS NEEDS TO BE UPDATED###
   An output file in fastq format is written to the current directory, 
