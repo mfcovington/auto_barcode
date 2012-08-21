@@ -19,22 +19,28 @@ use List::Util qw(min max);
 #incorporate 'barcode_psychic.pl' functionality
 
 #options/defaults
-my ( $fq_in, $barcode, $sample_id, $list, $outdir, $notrim, $help );
+my ( $fq_in, $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help );
+my $prefix = "";
+my $suffix = "";
 my $options = GetOptions(
-    "fq_in=s"     => \$fq_in,
-    "barcode=s"   => \$barcode,
-    "sample_id=s" => \$sample_id,
-    "list"        => \$list,
-    "outdir=s"    => \$outdir,
-    "notrim"      => \$notrim,
-    "help"        => \$help,
+    "fq_in=s"    => \$fq_in,
+    "barcode=s"  => \$barcode,
+    "id=s"       => \$id,
+    "list"       => \$list,
+    "outdir=s"   => \$outdir,
+    "autoprefix" => \$autoprefix,
+    "prefix=s"   => \$prefix,
+    "suffix=s"   => \$suffix,
+    "autosuffix" => \$autosuffix,
+    "notrim"     => \$notrim,
+    "help"       => \$help,
 );
 
 #help/usage
 my $prog = basename($0);
 print_usage() and exit if $help;
 print_usage() and exit unless defined $fq_in and defined $barcode;
-print_usage() and exit unless defined $sample_id or defined $list;
+print_usage() and exit unless defined $id or defined $list;
 
 #gather barcodes to search for
 my %barcode_table;
@@ -48,7 +54,7 @@ if ($list) {
       } <$barcode_list_fh>;
     close $barcode_list_fh;
 }
-else { $barcode_table{$barcode} = [ $sample_id, 0 ]; }
+else { $barcode_table{$barcode} = [ $id, 0 ]; }
 
 #check lengths of barcodes
 my $min_length = min map { length } keys %barcode_table;
@@ -58,11 +64,16 @@ die "Unexpected variation in barcode length (min=$min_length, max=$max_length)"
 my $barcode_length = $max_length;
 
 #open all filehandles
-my ( $filename, $directory, $suffix ) = fileparse( $fq_in, ".f(ast)?q" );
+my ( $filename, $directory, $filesuffix ) = fileparse( $fq_in, ".f(ast)?q" );
+$prefix .= "." unless $prefix eq "";
+$prefix = join ".", $filename, $prefix if $autoprefix;
+$suffix = "." . $suffix unless $suffix eq "";
 $directory = $outdir if defined $outdir;
 open my $fq_in_fh, "<", $fq_in;
 for ( keys %barcode_table ) {
-    my $fq_out = $directory . $barcode_table{$_}->{id} . ".fq";
+    my $temp_suffix = $suffix;
+    $temp_suffix = join ".", $suffix, $_ if $autosuffix;
+    my $fq_out = $directory . $prefix . $barcode_table{$_}->{id} . $temp_suffix . ".fq";
     open $barcode_table{$_}->{fh}, ">", $fq_out;
 }
 
@@ -92,7 +103,7 @@ map { close $barcode_table{$_}->{fh} } keys %barcode_table;
 #summary
 say "Barcode spiltting sumary for $fq_in";
 say "-----------------------------" . "-" x length $fq_in;
-say "barcode\tsample_id\tcount";
+say "barcode\tid\tcount";
 map {
     say $_ . "\t"
       . $barcode_table{$_}->{id} . "\t"
@@ -122,7 +133,7 @@ OPTIONS  ###THIS NEEDS TO BE UPDATED###
   -h, --help                Print this help message
   -f, --fq_in     IN.FASTQ  Extract reads from specified file    
   -b, --barcode   BARCODE   Specify barcode or list of barcodes to extract
-  -s, --sample_id
+  -i, --id
   -l, --list                Indicates --barcode is a list of barcodes in a file
   -o, --outdir   DIR       Output file is saved in the specified directory
                               (or same directory as IN.FASTQ, if --outdir is not used)
