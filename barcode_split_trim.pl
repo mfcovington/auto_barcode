@@ -101,16 +101,17 @@ while ( my $read_id = <$fq_in_fh> ) {
 map { close $barcode_table{$_}->{fh} } keys %barcode_table;
 
 #summary
-say "Barcode spiltting sumary for $fq_in";
-say "-----------------------------" . "-" x length $fq_in;
-say "barcode\tid\tcount";
+open my $log_fh, ">", $directory . join ".", "barcode_splitting", "fq_" . $filename, "bar_" . $barcode, "log";
+say $log_fh "Barcode spiltting sumary for $fq_in";
+say $log_fh "-----------------------------" . "-" x length $fq_in;
+say $log_fh "barcode\tid\tcount";
 map {
-    say $_ . "\t"
+    say $log_fh $_ . "\t"
       . $barcode_table{$_}->{id} . "\t"
       . commify( $barcode_table{$_}->{count} )
 } keys %barcode_table;
-say "matched\t" . commify($total_matched);
-say "none\t"    . commify($total_unmatched);
+say $log_fh "matched\t" . commify($total_matched);
+say $log_fh "none\t"    . commify($total_unmatched);
 
 exit;
 
