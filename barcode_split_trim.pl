@@ -15,8 +15,8 @@ use List::Util qw(min max);
 
 ###TODO:
 #check that barcodes are comprosed of ACGT
-#update usage statement
 #incorporate 'barcode_psychic.pl' functionality
+#write unmatched to file
 
 #options/defaults
 my ( $fq_in, $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help );
@@ -80,9 +80,11 @@ for ( keys %barcode_table ) {
 #split and trim
 my $total_matched   = 0;
 my $total_unmatched = 0;
+my %barcodes_obs;
 while ( my $read_id = <$fq_in_fh> ) {
     my $seq = <$fq_in_fh>;
     my $cur_barcode = substr $seq, 0, $barcode_length;
+    $barcodes_obs{$cur_barcode}++;
     if ( /^$cur_barcode/ ~~ %barcode_table ) {
         $seq = substr $seq, $barcode_length + 1 unless $notrim;
         my $qual_id = <$fq_in_fh>;
@@ -100,18 +102,28 @@ while ( my $read_id = <$fq_in_fh> ) {
 }
 map { close $barcode_table{$_}->{fh} } keys %barcode_table;
 
-#summary
-open my $log_fh, ">", $directory . join ".", "barcode_splitting", "fq_" . $filename, "bar_" . $barcode, "log";
-say $log_fh "Barcode spiltting sumary for $fq_in";
-say $log_fh "-----------------------------" . "-" x length $fq_in;
-say $log_fh "barcode\tid\tcount";
+#observed barcodes summary
+my @sorted_barcodes_obs =
+  map  { join "\t", $_->[0], $barcodes_obs{ $_->[0] } }
+  sort {  $b->[1] <=> $a->[1] }
+  map  { [ $_, $barcodes_obs{$_} ] }
+  keys %barcodes_obs;
+open my $bar_log_fh, ">", $directory . join ".", "log_barcodes_observed", "fq_" . $filename, "bar_" . $barcode;
+say $bar_log_fh join "\n", @sorted_barcodes_obs;
+
+
+#counts summary
+open my $count_log_fh, ">", $directory . join ".", "log_barcode_counts", "fq_" . $filename, "bar_" . $barcode;
+say $count_log_fh "Barcode splitting summary for $fq_in";
+say $count_log_fh "------------------------------" . "-" x length $fq_in;
+say $count_log_fh "barcode\tid\tcount";
 map {
-    say $log_fh $_ . "\t"
+    say $count_log_fh $_ . "\t"
       . $barcode_table{$_}->{id} . "\t"
       . commify( $barcode_table{$_}->{count} )
 } keys %barcode_table;
-say $log_fh "matched\t" . commify($total_matched);
-say $log_fh "none\t"    . commify($total_unmatched);
+say $count_log_fh "matched\t" . commify($total_matched);
+say $count_log_fh "none\t"    . commify($total_unmatched);
 
 exit;
 
