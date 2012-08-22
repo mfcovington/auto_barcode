@@ -14,8 +14,7 @@ use File::Basename;
 use List::Util qw(min max);
 
 ###TODO:
-#check that barcodes are comprised of ACGT
-#incorporate more 'barcode_psychic.pl' functionality
+#incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
 
 #options/defaults
 my ( $fq_in, $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help );
@@ -55,12 +54,15 @@ if ($list) {
 }
 else { $barcode_table{$barcode} = [ $id, 0 ]; }
 
-#check lengths of barcodes
+#check lengths and integrity of barcodes
 my $min_length = min map { length } keys %barcode_table;
 my $max_length = max map { length } keys %barcode_table;
-die "Unexpected variation in barcode length (min=$min_length, max=$max_length)"
+die
+  "Unexpected variation in barcode length (min=$min_length, max=$max_length)\n"
   unless $min_length == $max_length;
 my $barcode_length = $max_length;
+map { die "Invalid barcode found: $_\n" unless /^[ACGT]{$barcode_length}$/i }
+  keys %barcode_table;
 
 #open all filehandles
 my ( $filename, $directory, $filesuffix ) = fileparse( $fq_in, ".f(ast)?q" );
@@ -91,7 +93,7 @@ while ( my $read_id = <$fq_in_fh> ) {
     my $qual    = <$fq_in_fh>;
     my $cur_barcode = substr $seq, 0, $barcode_length;
     $barcodes_obs{$cur_barcode}++;
-    if ( /^$cur_barcode/ ~~ %barcode_table ) {
+    if ( /^$cur_barcode/i ~~ %barcode_table ) {
         $seq = substr $seq, $barcode_length + 1 unless $notrim;
         $qual = substr $qual, $barcode_length + 1 unless $notrim;
         print { $barcode_table{$cur_barcode}->{fh} }
