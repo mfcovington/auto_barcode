@@ -16,7 +16,6 @@ use List::Util qw(min max);
 ###TODO:
 #check that barcodes are comprised of ACGT
 #incorporate more 'barcode_psychic.pl' functionality
-#sort barcode counts
 
 #options/defaults
 my ( $fq_in, $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help );
@@ -117,11 +116,10 @@ close $bar_log_fh;
 
 #counts summary
 my @barcode_counts =
-  map {
-        $_ . "\t"
-      . $barcode_table{$_}->{id} . "\t"
-      . commify( $barcode_table{$_}->{count} )
-  } keys %barcode_table;
+  map { join "\t", $_->[0], $_->[1], $_->[2] }
+  sort { $a->[1] cmp $b->[1] }
+  map { [ $_, $barcode_table{$_}->{id}, commify( $barcode_table{$_}->{count} ) ] }
+  keys %barcode_table;
 open my $count_log_fh, ">", $directory . join ".", "log_barcode_counts", "fq_" . $filename, "bar_" . $barcode;
 say $count_log_fh "Barcode splitting summary for $fq_in";
 say $count_log_fh "------------------------------" . "-" x length $fq_in;
