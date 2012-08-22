@@ -129,23 +129,31 @@ USAGE
 DESCRIPTION
   Extracts fastq reads for specified barcode(s)
 
-OPTIONS  ###THIS NEEDS TO BE UPDATED###
-  -h, --help                Print this help message
-  -f, --fq_in     IN.FASTQ  Extract reads from specified file    
-  -b, --barcode   BARCODE   Specify barcode or list of barcodes to extract
-  -i, --id
-  -l, --list                Indicates --barcode is a list of barcodes in a file
-  -o, --outdir   DIR       Output file is saved in the specified directory
+OPTIONS
+  -h, --help                 Print this help message
+  -f, --fq_in     IN.FASTQ   Extract reads from specified file    
+  -b, --barcode   BARCODE    Specify barcode or list of barcodes to extract
+  -i, --id        SAMPLE_ID  Sample ID (not needed if using list of barcodes)
+  -l, --list                 Indicates --barcode is a list of barcodes in a file
+  -n, --notrim               Split without trimming barcodes off
+  -o, --outdir    DIR        Output file is saved in the specified directory
                               (or same directory as IN.FASTQ, if --outdir is not used)
 
-OUTPUT  ###THIS NEEDS TO BE UPDATED###
-  An output file in fastq format is written to the current directory, 
-  unless an output directory is specified.
-  The name of the output file is BARCODE.fastq.
+NAMING OPTIONS
+  --autoprefix               Append FASTQ file name onto output
+  --autosuffix               Append barcode onto output 
+  -p, --prefix    PREFIX     Add custom prefix to output
+  -s, --suffix    SUFFIX     Add custom suffix to output
 
-EXAMPLES  ###THIS NEEDS TO BE UPDATED###
-  $prog -f ITAG2.3_cds_SHORTNAMES.fastq -g Solyc10g044670 -o seq_directory
-  $prog --fq_in ITAG2.3_cds_SHORTNAMES.fastq --barcode barcode.file --list
+OUTPUT
+  An output file in fastq format is written for each barcode to the directory
+  containing IN.FASTQ, unless an output directory is specified.
+  The default name of the output file is SAMPLE_ID.fq. The output names can be
+  customized using the Naming Options.
+
+EXAMPLES
+  $prog -f kitten_DNA.fq -b GACTG -i Charlotte
+  $prog --fq_in kitten_DNA.fastq --barcode barcode.file --list
   $prog --help
 
 EOF
