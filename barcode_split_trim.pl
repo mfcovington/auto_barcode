@@ -16,7 +16,6 @@ use List::Util qw(min max);
 ###TODO:
 #check that barcodes are comprised of ACGT
 #incorporate more 'barcode_psychic.pl' functionality
-#write unmatched to file
 #sort barcode counts
 
 #options/defaults
@@ -67,8 +66,10 @@ my $barcode_length = $max_length;
 #open all filehandles
 my ( $filename, $directory, $filesuffix ) = fileparse( $fq_in, ".f(ast)?q" );
 $prefix .= "." unless $prefix eq "";
-$prefix = join ".", $filename, $prefix if $autoprefix;
 $suffix = "." . $suffix unless $suffix eq "";
+my $unmatched_fq_out = $directory . "unmatched." . $prefix . "fq_" . $filename . ".bar_" . $barcode . $suffix . ".fq";
+open my $unmatched_fh, ">", $unmatched_fq_out;
+$prefix = join ".", $filename, $prefix if $autoprefix;
 $directory = $outdir if defined $outdir;
 open my $fq_in_fh, "<", $fq_in;
 for ( keys %barcode_table ) {
@@ -83,13 +84,13 @@ my $total_matched   = 0;
 my $total_unmatched = 0;
 my %barcodes_obs;
 while ( my $read_id = <$fq_in_fh> ) {
-    my $seq = <$fq_in_fh>;
+    my $seq     = <$fq_in_fh>;
+    my $qual_id = <$fq_in_fh>;
+    my $qual    = <$fq_in_fh>;
     my $cur_barcode = substr $seq, 0, $barcode_length;
     $barcodes_obs{$cur_barcode}++;
     if ( /^$cur_barcode/ ~~ %barcode_table ) {
         $seq = substr $seq, $barcode_length + 1 unless $notrim;
-        my $qual_id = <$fq_in_fh>;
-        my $qual    = <$fq_in_fh>;
         $qual = substr $qual, $barcode_length + 1 unless $notrim;
         print { $barcode_table{$cur_barcode}->{fh} }
           $read_id . $seq . $qual_id . $qual;
@@ -97,11 +98,12 @@ while ( my $read_id = <$fq_in_fh> ) {
         $total_matched++;
     }
     else {
-        <$fq_in_fh>, <$fq_in_fh>;
+        print $unmatched_fh $read_id . $seq . $qual_id . $qual;
         $total_unmatched++;
     }
 }
 map { close $barcode_table{$_}->{fh} } keys %barcode_table;
+close $unmatched_fh;
 
 #observed barcodes summary
 my @sorted_barcodes_obs =
@@ -111,7 +113,7 @@ my @sorted_barcodes_obs =
   keys %barcodes_obs;
 open my $bar_log_fh, ">", $directory . join ".", "log_barcodes_observed", "fq_" . $filename, "bar_" . $barcode;
 say $bar_log_fh join "\n", @sorted_barcodes_obs;
-
+close $bar_log_fh;
 
 #counts summary
 my @barcode_counts =
@@ -127,6 +129,7 @@ say $count_log_fh "barcode\tid\tcount";
 say $count_log_fh join "\n", @barcode_counts;
 say $count_log_fh "matched\t" . commify($total_matched);
 say $count_log_fh "none\t"    . commify($total_unmatched);
+close $count_log_fh;
 
 exit;
 
