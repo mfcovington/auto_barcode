@@ -14,9 +14,10 @@ use File::Basename;
 use List::Util qw(min max);
 
 ###TODO:
-#check that barcodes are comprosed of ACGT
-#incorporate 'barcode_psychic.pl' functionality
+#check that barcodes are comprised of ACGT
+#incorporate more 'barcode_psychic.pl' functionality
 #write unmatched to file
+#sort barcode counts
 
 #options/defaults
 my ( $fq_in, $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help );
@@ -113,15 +114,17 @@ say $bar_log_fh join "\n", @sorted_barcodes_obs;
 
 
 #counts summary
+my @barcode_counts =
+  map {
+        $_ . "\t"
+      . $barcode_table{$_}->{id} . "\t"
+      . commify( $barcode_table{$_}->{count} )
+  } keys %barcode_table;
 open my $count_log_fh, ">", $directory . join ".", "log_barcode_counts", "fq_" . $filename, "bar_" . $barcode;
 say $count_log_fh "Barcode splitting summary for $fq_in";
 say $count_log_fh "------------------------------" . "-" x length $fq_in;
 say $count_log_fh "barcode\tid\tcount";
-map {
-    say $count_log_fh $_ . "\t"
-      . $barcode_table{$_}->{id} . "\t"
-      . commify( $barcode_table{$_}->{count} )
-} keys %barcode_table;
+say $count_log_fh join "\n", @barcode_counts;
 say $count_log_fh "matched\t" . commify($total_matched);
 say $count_log_fh "none\t"    . commify($total_unmatched);
 
