@@ -15,6 +15,7 @@ use List::Util qw(min max);
 
 ###TODO:
 #incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
+#fuzzy matching
 
 #options/defaults
 my ( $fq_in, $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help );
@@ -180,5 +181,3 @@ EXAMPLES
 
 EOF
 }
-
-exit;
