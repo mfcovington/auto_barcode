@@ -83,6 +83,9 @@ my $total_matched   = 0;
 my $total_unmatched = 0;
 my %barcodes_obs;
 while ( my $read_id = <$fq_in_fh> ) {
+    die
+      "Encountered sequence ID that doesn't start with '\@' on line $. of FASTQ file: $read_id  Invalid or corrupt FASTQ file?\n"
+      unless $read_id =~ /^@/;
     my $seq     = <$fq_in_fh>;
     my $qual_id = <$fq_in_fh>;
     my $qual    = <$fq_in_fh>;
