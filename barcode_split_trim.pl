@@ -17,6 +17,7 @@ use List::Util qw(min max);
 ###TODO:
 #incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
 #fuzzy matching
+#add option for preliminary observed barcode summary
 
 #options/defaults
 my ( $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help );
@@ -83,6 +84,7 @@ make_path($directory);
 $prefix .= "." unless $prefix eq "";
 $suffix = "." . $suffix unless $suffix eq "";
 $prefix = join ".", $filename, $prefix if $autoprefix;
+$barcode = fileparse($barcode);
 my $unmatched_fq_out = $directory . "unmatched." . $prefix . "fq_" . $filename . ".bar_" . $barcode . $suffix . ".fq";
 open my $unmatched_fh, ">", $unmatched_fq_out;
 for ( keys %barcode_table ) {
