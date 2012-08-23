@@ -76,6 +76,7 @@ map { die "Invalid barcode found: $_\n" unless /^[ACGT]{$barcode_length}$/i }
 
 #open all filehandles (except fastq in)
 my ( $filename, $directory, $filesuffix ) = fileparse( $fq_files[0], ".f(ast)?q" );
+$filename = "multi_fq" if @fq_files > 1;
 $directory = $outdir if defined $outdir;
 $prefix .= "." unless $prefix eq "";
 $suffix = "." . $suffix unless $suffix eq "";
