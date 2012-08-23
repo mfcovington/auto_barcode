@@ -11,6 +11,7 @@ use autodie;
 use feature 'say';
 use Getopt::Long;
 use File::Basename;
+use File::Path 'make_path';
 use List::Util qw(min max);
 
 ###TODO:
@@ -77,7 +78,8 @@ map { die "Invalid barcode found: $_\n" unless /^[ACGT]{$barcode_length}$/i }
 #open all filehandles (except fastq in)
 my ( $filename, $directory, $filesuffix ) = fileparse( $fq_files[0], ".f(ast)?q" );
 $filename = "multi_fq" if @fq_files > 1;
-$directory = $outdir if defined $outdir;
+$directory = $outdir . "/" if defined $outdir;
+make_path($directory);
 $prefix .= "." unless $prefix eq "";
 $suffix = "." . $suffix unless $suffix eq "";
 $prefix = join ".", $filename, $prefix if $autoprefix;
