@@ -138,9 +138,10 @@ my @barcode_counts =
   map { [ $_, $barcode_table{$_}->{id}, commify( $barcode_table{$_}->{count} ) ] }
   keys %barcode_table;
 open my $count_log_fh, ">", $directory . join ".", "log_barcode_counts", "fq_" . $filename, "bar_" . $barcode;
-say $count_log_fh "Barcode splitting summary for $fq_files[0]";
-map { say $count_log_fh "  + ". $_ } @fq_files[ 1 .. $#fq_files ] if scalar @fq_files > 1;
-say $count_log_fh "------------------------------" . "-" x length $fq_files[0];
+say $count_log_fh "Barcode splitting summary for:";
+map { say $count_log_fh "  " . $_ } @fq_files;
+my $max_fq_length = max map { length } @fq_files;
+say $count_log_fh "-" x ( $max_fq_length + 2 );
 say $count_log_fh "barcode\tid\tcount";
 say $count_log_fh join "\n", @barcode_counts;
 say $count_log_fh "matched\t" . commify($total_matched);
