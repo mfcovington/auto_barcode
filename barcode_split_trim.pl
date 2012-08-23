@@ -18,11 +18,10 @@ use List::Util qw(min max);
 #fuzzy matching
 
 #options/defaults
-my ( $fq_in, $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help );
+my ( $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help );
 my $prefix = "";
 my $suffix = "";
 my $options = GetOptions(
-    "fq_in=s"    => \$fq_in,
     "barcode=s"  => \$barcode,
     "id=s"       => \$id,
     "list"       => \$list,
@@ -34,12 +33,22 @@ my $options = GetOptions(
     "notrim"     => \$notrim,
     "help"       => \$help,
 );
+my @fq_files = grep { /f(ast)?q$/i } @ARGV;
 
 #help/usage
 my $prog = basename($0);
-print_usage() and exit if $help;
-print_usage() and exit unless defined $fq_in and defined $barcode;
-print_usage() and exit unless defined $id or defined $list;
+print_usage()
+  and die "WARNING: To run successfully, remember to remove '--help'.\n"
+  if $help;
+print_usage()
+  and die "ERROR: Missing barcode or path to barcode file.\n"
+  unless defined $barcode;
+print_usage()
+  and die "ERROR: Missing sample ID or barcode list indicator ('--list').\n"
+  unless defined $id or defined $list;
+print_usage()
+  and die "ERROR: Missing path to FASTQ file(s) (--list).\n"
+  unless scalar @fq_files > 0;
 
 #gather barcodes to search for
 my %barcode_table;
@@ -65,15 +74,14 @@ my $barcode_length = $max_length;
 map { die "Invalid barcode found: $_\n" unless /^[ACGT]{$barcode_length}$/i }
   keys %barcode_table;
 
-#open all filehandles
-my ( $filename, $directory, $filesuffix ) = fileparse( $fq_in, ".f(ast)?q" );
+#open all filehandles (except fastq in)
+my ( $filename, $directory, $filesuffix ) = fileparse( $fq_files[0], ".f(ast)?q" );
+$directory = $outdir if defined $outdir;
 $prefix .= "." unless $prefix eq "";
 $suffix = "." . $suffix unless $suffix eq "";
+$prefix = join ".", $filename, $prefix if $autoprefix;
 my $unmatched_fq_out = $directory . "unmatched." . $prefix . "fq_" . $filename . ".bar_" . $barcode . $suffix . ".fq";
 open my $unmatched_fh, ">", $unmatched_fq_out;
-$prefix = join ".", $filename, $prefix if $autoprefix;
-$directory = $outdir if defined $outdir;
-open my $fq_in_fh, "<", $fq_in;
 for ( keys %barcode_table ) {
     my $temp_suffix = $suffix;
     $temp_suffix = join ".", $suffix, $_ if $autosuffix;
@@ -85,26 +93,29 @@ for ( keys %barcode_table ) {
 my $total_matched   = 0;
 my $total_unmatched = 0;
 my %barcodes_obs;
-while ( my $read_id = <$fq_in_fh> ) {
-    die
-      "Encountered sequence ID that doesn't start with '\@' on line $. of FASTQ file: $read_id  Invalid or corrupt FASTQ file?\n"
-      unless $read_id =~ /^@/;
-    my $seq     = <$fq_in_fh>;
-    my $qual_id = <$fq_in_fh>;
-    my $qual    = <$fq_in_fh>;
-    my $cur_barcode = substr $seq, 0, $barcode_length;
-    $barcodes_obs{$cur_barcode}++;
-    if ( /^$cur_barcode/i ~~ %barcode_table ) {
-        $seq = substr $seq, $barcode_length + 1 unless $notrim;
-        $qual = substr $qual, $barcode_length + 1 unless $notrim;
-        print { $barcode_table{$cur_barcode}->{fh} }
-          $read_id . $seq . $qual_id . $qual;
-        $barcode_table{$cur_barcode}->{count}++;
-        $total_matched++;
-    }
-    else {
-        print $unmatched_fh $read_id . $seq . $qual_id . $qual;
-        $total_unmatched++;
+for my $fq_in (@fq_files) {
+    open my $fq_in_fh, "<", $fq_in;
+    while ( my $read_id = <$fq_in_fh> ) {
+        die
+          "Encountered sequence ID that doesn't start with '\@' on line $. of FASTQ file: $read_id  Invalid or corrupt FASTQ file?\n"
+          unless $read_id =~ /^@/;
+        my $seq     = <$fq_in_fh>;
+        my $qual_id = <$fq_in_fh>;
+        my $qual    = <$fq_in_fh>;
+        my $cur_barcode = substr $seq, 0, $barcode_length;
+        $barcodes_obs{$cur_barcode}++;
+        if ( /^$cur_barcode/i ~~ %barcode_table ) {
+            $seq = substr $seq, $barcode_length + 1 unless $notrim;
+            $qual = substr $qual, $barcode_length + 1 unless $notrim;
+            print { $barcode_table{$cur_barcode}->{fh} }
+              $read_id . $seq . $qual_id . $qual;
+            $barcode_table{$cur_barcode}->{count}++;
+            $total_matched++;
+        }
+        else {
+            print $unmatched_fh $read_id . $seq . $qual_id . $qual;
+            $total_unmatched++;
+        }
     }
 }
 map { close $barcode_table{$_}->{fh} } keys %barcode_table;
@@ -127,8 +138,9 @@ my @barcode_counts =
   map { [ $_, $barcode_table{$_}->{id}, commify( $barcode_table{$_}->{count} ) ] }
   keys %barcode_table;
 open my $count_log_fh, ">", $directory . join ".", "log_barcode_counts", "fq_" . $filename, "bar_" . $barcode;
-say $count_log_fh "Barcode splitting summary for $fq_in";
-say $count_log_fh "------------------------------" . "-" x length $fq_in;
+say $count_log_fh "Barcode splitting summary for $fq_files[0]";
+map { say $count_log_fh "  + ". $_ } @fq_files[ 1 .. $#fq_files ] if scalar @fq_files > 1;
+say $count_log_fh "------------------------------" . "-" x length $fq_files[0];
 say $count_log_fh "barcode\tid\tcount";
 say $count_log_fh join "\n", @barcode_counts;
 say $count_log_fh "matched\t" . commify($total_matched);
@@ -147,14 +159,14 @@ sub print_usage {
     warn <<"EOF";
 
 USAGE
-  $prog [options] -f IN.FASTQ -b BARCODE [-o OUTPUT_DIR]
+  $prog [options] -b BARCODE IN.FASTQ
 
 DESCRIPTION
-  Extracts fastq reads for specified barcode(s)
+  Extracts fastq reads for specified barcode(s) from one or multiple FASTQ files.
+  Use wildcards ('*') to match multiple input FASTQ files.
 
 OPTIONS
   -h, --help                 Print this help message
-  -f, --fq_in     IN.FASTQ   Extract reads from specified file    
   -b, --barcode   BARCODE    Specify barcode or list of barcodes to extract
   -i, --id        SAMPLE_ID  Sample ID (not needed if using list of barcodes)
   -l, --list                 Indicates --barcode is a list of barcodes in a file
@@ -175,8 +187,8 @@ OUTPUT
   customized using the Naming Options.
 
 EXAMPLES
-  $prog -f kitten_DNA.fq -b GACTG -i Charlotte
-  $prog --fq_in kitten_DNA.fastq --barcode barcode.file --list
+  $prog -b GACTG -i Charlotte kitten_DNA.fq
+  $prog --barcode barcode.file --list *_DNA.fastq
   $prog --help
 
 EOF
