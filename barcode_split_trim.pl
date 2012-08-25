@@ -13,11 +13,14 @@ use Getopt::Long;
 use File::Basename;
 use File::Path 'make_path';
 use List::Util qw(min max);
+use Statistics::Descriptive;
 
 ###TODO:
 #incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
 #fuzzy matching
 #add option for preliminary observed barcode summary
+#add percentages for barcode counts
+#add spaces to front of counts in summary so they are right-aligned
 
 #options/defaults
 my ( $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help );
@@ -147,13 +150,45 @@ say $count_log_fh "Barcode splitting summary for:";
 map { say $count_log_fh "  " . $_ } @fq_files;
 my $max_fq_length = max map { length } @fq_files;
 say $count_log_fh "-" x ( $max_fq_length + 2 );
+
+my $stat = Statistics::Descriptive::Full->new();;
+$stat->add_data( map{ $barcode_table{$_}->{count} } keys %barcode_table );
+say $count_log_fh "barcodes\t" . $stat->count();
+say $count_log_fh "min     \t" . $stat->min();
+say $count_log_fh "max     \t" . $stat->max();
+say $count_log_fh "mean    \t" . round( $stat->mean() );
+say $count_log_fh "median  \t" . $stat->median();
+say $count_log_fh "-" x ( $max_fq_length + 2 );
+
+say $count_log_fh join "\t",
+  "matched  ",
+  commify($total_matched),
+  percent( $total_matched / ( $total_matched + $total_unmatched ) );
+say $count_log_fh join "\t",
+  "unmatched",
+  commify($total_unmatched),
+  percent( $total_unmatched / ( $total_matched + $total_unmatched ) );
+say $count_log_fh "-" x ( $max_fq_length + 2 );
+
 say $count_log_fh "barcode\tid\tcount";
 say $count_log_fh join "\n", @barcode_counts;
-say $count_log_fh "matched\t" . commify($total_matched);
-say $count_log_fh "none\t"    . commify($total_unmatched);
 close $count_log_fh;
 
+
+
+
+
 exit;
+
+sub percent {
+    local $_  = shift;
+    return int($_  * 100 + 0.5) . "%";
+}
+
+sub round {
+    local $_  = shift;
+    return int($_  + 0.5);
+}
 
 sub commify {
     local $_  = shift;
