@@ -151,15 +151,6 @@ map { say $count_log_fh "  " . $_ } @fq_files;
 my $max_fq_length = max map { length } @fq_files;
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
-my $stat = Statistics::Descriptive::Full->new();;
-$stat->add_data( map{ $barcode_table{$_}->{count} } keys %barcode_table );
-say $count_log_fh "barcodes\t" . $stat->count();
-say $count_log_fh "min     \t" . $stat->min();
-say $count_log_fh "max     \t" . $stat->max();
-say $count_log_fh "mean    \t" . round( $stat->mean() );
-say $count_log_fh "median  \t" . $stat->median();
-say $count_log_fh "-" x ( $max_fq_length + 2 );
-
 say $count_log_fh join "\t",
   "matched  ",
   commify($total_matched),
@@ -168,6 +159,15 @@ say $count_log_fh join "\t",
   "unmatched",
   commify($total_unmatched),
   percent( $total_unmatched / ( $total_matched + $total_unmatched ) );
+say $count_log_fh "-" x ( $max_fq_length + 2 );
+
+my $stat = Statistics::Descriptive::Full->new();;
+$stat->add_data( map{ $barcode_table{$_}->{count} } keys %barcode_table );
+say $count_log_fh "barcodes\t" . $stat->count();
+say $count_log_fh "min     \t" . $stat->min();
+say $count_log_fh "max     \t" . $stat->max();
+say $count_log_fh "mean    \t" . round( $stat->mean() );
+say $count_log_fh "median  \t" . $stat->median();
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
 say $count_log_fh "barcode\tid\tcount";
