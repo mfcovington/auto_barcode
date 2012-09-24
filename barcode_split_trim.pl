@@ -79,7 +79,7 @@ my $barcode_length = $max_length;
 map { die "Invalid barcode found: $_\n" unless /^[ACGT]{$barcode_length}$/i }
   keys %barcode_table;
 
-#open all filehandles (except fastq in)
+#open all fastq output filehandles
 my ( $filename, $directory, $filesuffix ) = fileparse( $fq_files[0], ".f(ast)?q" );
 $filename = "multi_fq" if @fq_files > 1;
 $directory = $outdir . "/" if defined $outdir;
@@ -131,12 +131,26 @@ close $unmatched_fh;
 
 #observed barcodes summary
 my @sorted_barcodes_obs =
-  map  { join "\t", $_->[0], $barcodes_obs{ $_->[0] } }
-  sort {  $b->[1] <=> $a->[1] }
-  map  { [ $_, $barcodes_obs{$_} ] }
+  map {
+    [
+        $_->[0],
+        commify( $barcodes_obs{ $_->[0] } ),
+        percent(
+            $barcodes_obs{ $_->[0] } / ( $total_matched + $total_unmatched )
+        )
+    ]
+  }
+  sort { $b->[1] <=> $a->[1] }
+  map { [ $_, $barcodes_obs{$_} ] }
   keys %barcodes_obs;
 open my $bar_log_fh, ">", $directory . join ".", "log_barcodes_observed", "fq_" . $filename, "bar_" . $barcode;
-say $bar_log_fh join "\n", @sorted_barcodes_obs;
+my $tbl_observed = Text::Table->new(
+    "",
+    "\n&right",
+    "\n&right",
+);
+$tbl_observed->load(@sorted_barcodes_obs);
+print $bar_log_fh $tbl_observed;
 close $bar_log_fh;
 
 #counts summary
@@ -145,18 +159,19 @@ my @barcode_counts =
   sort { $a->[1] cmp $b->[1] }
   map { [ $_, $barcode_table{$_}->{id}, commify( $barcode_table{$_}->{count} ) ] }
   keys %barcode_table;
+
 open my $count_log_fh, ">", $directory . join ".", "log_barcode_counts", "fq_" . $filename, "bar_" . $barcode;
 say $count_log_fh "Barcode splitting summary for:";
 map { say $count_log_fh "  " . $_ } @fq_files;
 my $max_fq_length = max map { length } @fq_files;
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
-my $tab_matched = Text::Table->new(
+my $tbl_matched = Text::Table->new(
     "",
     "\n&right",
     "\n&right",
 );
-$tab_matched->load(
+$tbl_matched->load(
     [
         "matched",
         commify($total_matched),
@@ -169,32 +184,32 @@ $tab_matched->load(
     ],
 );
 
-print $count_log_fh $tab_matched;
+print $count_log_fh $tbl_matched;
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
 my $stat = Statistics::Descriptive::Full->new();
 $stat->add_data( map{ $barcode_table{$_}->{count} } keys %barcode_table );
-my $tab_stats = Text::Table->new(
+my $tbl_stats = Text::Table->new(
     "",
     "\n&right",
 );
-$tab_stats->load(
+$tbl_stats->load(
     [ "barcodes", commify( $stat->count() ) ],
     [ "min",      commify( $stat->min() ) ],
     [ "max",      commify( $stat->max() ) ],
     [ "mean",     commify( round( $stat->mean() ) ) ],
     [ "median",   commify( $stat->median() ) ],
 );
-print $count_log_fh $tab_stats;
+print $count_log_fh $tbl_stats;
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
-my $tab_counts = Text::Table->new(
+my $tbl_counts = Text::Table->new(
     "barcode",
     "id",
     "count\n&right",
 );
-$tab_counts->load(@barcode_counts);
-print $count_log_fh $tab_counts;
+$tbl_counts->load(@barcode_counts);
+print $count_log_fh $tbl_counts;
 close $count_log_fh;
 
 exit;
