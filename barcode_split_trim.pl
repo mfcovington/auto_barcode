@@ -164,11 +164,17 @@ say $count_log_fh "-" x ( $max_fq_length + 2 );
 
 my $stat = Statistics::Descriptive::Full->new();
 $stat->add_data( map{ $barcode_table{$_}->{count} } keys %barcode_table );
-say $count_log_fh "barcodes\t" . $stat->count();
-say $count_log_fh "min     \t" . $stat->min();
-say $count_log_fh "max     \t" . $stat->max();
-say $count_log_fh "mean    \t" . round( $stat->mean() );
-say $count_log_fh "median  \t" . $stat->median();
+my $tab_stats = Text::Table->new(
+    "", "\n&right"
+);
+$tab_stats->load(
+    [ "barcodes", commify( $stat->count() ) ],
+    [ "min", commify( $stat->min() ) ],
+    [ "max", commify( $stat->max() ) ],
+    [ "mean", commify( round( $stat->mean() ) ) ],
+    [ "median", commify( $stat->median() ) ],
+);
+print $count_log_fh $tab_stats;
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
 my $tab_counts = Text::Table->new(
