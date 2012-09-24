@@ -152,32 +152,46 @@ my $max_fq_length = max map { length } @fq_files;
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
 my $tab_matched = Text::Table->new(
-    "", "\n&right", "\n&right"
+    "",
+    "\n&right",
+    "\n&right",
 );
 $tab_matched->load(
-    [ "matched", commify($total_matched), percent( $total_matched / ( $total_matched + $total_unmatched ) ) ],
-    [ "unmatched", commify($total_unmatched), percent( $total_unmatched / ( $total_matched + $total_unmatched ) ) ],
+    [
+        "matched",
+        commify($total_matched),
+        percent( $total_matched / ( $total_matched + $total_unmatched ) ),
+    ],
+    [
+        "unmatched",
+        commify($total_unmatched),
+        percent( $total_unmatched / ( $total_matched + $total_unmatched ) ),
+    ],
 );
+
 print $count_log_fh $tab_matched;
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
 my $stat = Statistics::Descriptive::Full->new();
 $stat->add_data( map{ $barcode_table{$_}->{count} } keys %barcode_table );
 my $tab_stats = Text::Table->new(
-    "", "\n&right"
+    "",
+    "\n&right",
 );
 $tab_stats->load(
     [ "barcodes", commify( $stat->count() ) ],
-    [ "min", commify( $stat->min() ) ],
-    [ "max", commify( $stat->max() ) ],
-    [ "mean", commify( round( $stat->mean() ) ) ],
-    [ "median", commify( $stat->median() ) ],
+    [ "min",      commify( $stat->min() ) ],
+    [ "max",      commify( $stat->max() ) ],
+    [ "mean",     commify( round( $stat->mean() ) ) ],
+    [ "median",   commify( $stat->median() ) ],
 );
 print $count_log_fh $tab_stats;
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
 my $tab_counts = Text::Table->new(
-    "barcode", "id", "count\n&right"
+    "barcode",
+    "id",
+    "count\n&right",
 );
 $tab_counts->load(@barcode_counts);
 print $count_log_fh $tab_counts;
