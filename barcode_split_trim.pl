@@ -14,6 +14,7 @@ use File::Basename;
 use File::Path 'make_path';
 use List::Util qw(min max);
 use Statistics::Descriptive;
+use Text::Table;
 
 ###TODO:
 #incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
@@ -141,7 +142,7 @@ close $bar_log_fh;
 
 #counts summary
 my @barcode_counts =
-  map { join "\t", $_->[0], $_->[1], $_->[2] }
+  map { [ $_->[0], $_->[1], $_->[2] ] }
   sort { $a->[1] cmp $b->[1] }
   map { [ $_, $barcode_table{$_}->{id}, commify( $barcode_table{$_}->{count} ) ] }
   keys %barcode_table;
@@ -161,7 +162,7 @@ say $count_log_fh join "\t",
   percent( $total_unmatched / ( $total_matched + $total_unmatched ) );
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
-my $stat = Statistics::Descriptive::Full->new();;
+my $stat = Statistics::Descriptive::Full->new();
 $stat->add_data( map{ $barcode_table{$_}->{count} } keys %barcode_table );
 say $count_log_fh "barcodes\t" . $stat->count();
 say $count_log_fh "min     \t" . $stat->min();
@@ -170,13 +171,12 @@ say $count_log_fh "mean    \t" . round( $stat->mean() );
 say $count_log_fh "median  \t" . $stat->median();
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
-say $count_log_fh "barcode\tid\tcount";
-say $count_log_fh join "\n", @barcode_counts;
+my $tab_counts = Text::Table->new(
+    "barcode", "id", "count\n&right"
+);
+$tab_counts->load(@barcode_counts);
+print $count_log_fh $tab_counts;
 close $count_log_fh;
-
-
-
-
 
 exit;
 
