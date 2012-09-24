@@ -16,16 +16,15 @@ use List::Util qw(min max);
 use Statistics::Descriptive;
 use Text::Table;
 
-###TODO:
-#incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
-#fuzzy matching
-#add option for preliminary observed barcode summary
-#add percentages for barcode counts
+#TODO:
+# incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
+# fuzzy matching
+# add option for preliminary observed barcode summary
 
 #options/defaults
 my ( $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help );
-my $prefix = "";
-my $suffix = "";
+my $prefix  = "";
+my $suffix  = "";
 my $options = GetOptions(
     "barcode=s"  => \$barcode,
     "id=s"       => \$id,
@@ -215,17 +214,17 @@ close $count_log_fh;
 exit;
 
 sub percent {
-    local $_  = shift;
-    return sprintf("%.1f", $_  * 100) . "%";
+    local $_ = shift;
+    return sprintf( "%.1f", $_ * 100 ) . "%";
 }
 
 sub round {
-    local $_  = shift;
-    return int($_  + 0.5);
+    local $_ = shift;
+    return int( $_ + 0.5 );
 }
 
 sub commify {
-    local $_  = shift;
+    local $_ = shift;
     1 while s/^([-+]?\d+)(\d{3})/$1,$2/;
     return $_;
 }
