@@ -21,7 +21,6 @@ use Text::Table;
 #fuzzy matching
 #add option for preliminary observed barcode summary
 #add percentages for barcode counts
-#add spaces to front of counts in summary so they are right-aligned
 
 #options/defaults
 my ( $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help );
@@ -152,14 +151,14 @@ map { say $count_log_fh "  " . $_ } @fq_files;
 my $max_fq_length = max map { length } @fq_files;
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
-say $count_log_fh join "\t",
-  "matched  ",
-  commify($total_matched),
-  percent( $total_matched / ( $total_matched + $total_unmatched ) );
-say $count_log_fh join "\t",
-  "unmatched",
-  commify($total_unmatched),
-  percent( $total_unmatched / ( $total_matched + $total_unmatched ) );
+my $tab_matched = Text::Table->new(
+    "", "\n&right", "\n&right"
+);
+$tab_matched->load(
+    [ "matched", commify($total_matched), percent( $total_matched / ( $total_matched + $total_unmatched ) ) ],
+    [ "unmatched", commify($total_unmatched), percent( $total_unmatched / ( $total_matched + $total_unmatched ) ) ],
+);
+print $count_log_fh $tab_matched;
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
 my $stat = Statistics::Descriptive::Full->new();
