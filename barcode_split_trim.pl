@@ -216,7 +216,7 @@ exit;
 
 sub percent {
     local $_  = shift;
-    return int($_  * 100 + 0.5) . "%";
+    return sprintf("%.1f", $_  * 100) . "%";
 }
 
 sub round {
