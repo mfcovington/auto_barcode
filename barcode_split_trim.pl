@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 # barcode_split_trim.pl
 # Mike Covington (Maloof Lab, UC-Davis)
+# https://github.com/mfcovington/auto_barcode
 # v1.0: 2012-09-25
 # v0.1: 2012-02-21
 #
