@@ -1,10 +1,12 @@
 #!/usr/bin/env perl
-# basic_barcode_split.pl
-# Mike Covington
-# created: 2012-02-21
+# barcode_split_trim.pl
+# Mike Covington (Maloof Lab, UC-Davis)
+# v1.0: 2012-09-25
+# v0.1: 2012-02-21
 #
-# Description: 
-#
+# Description:
+# - Extracts fastq reads for specified barcode(s) from one or multiple FASTQ files
+# - Writes helpful logs with barcode stats
 use strict;
 use warnings;
 use autodie;
@@ -21,8 +23,9 @@ use Text::Table;
 # fuzzy matching
 # add option for preliminary observed barcode summary
 
+
 #options/defaults
-my ( $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help );
+my ( $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help, $version );
 my $prefix  = "";
 my $suffix  = "";
 my $options = GetOptions(
@@ -36,8 +39,12 @@ my $options = GetOptions(
     "autosuffix" => \$autosuffix,
     "notrim"     => \$notrim,
     "help"       => \$help,
+    "version"    => \$version,
 );
 my @fq_files = grep { /f(ast)?q$/i } @ARGV;
+
+my $current_version = "v1.0";
+die "$current_version\n" if $version;
 
 #help/usage
 my $prog = basename($0);
@@ -243,6 +250,7 @@ DESCRIPTION
 
 OPTIONS
   -h, --help                 Print this help message
+  -v, --version              Print version number
   -b, --barcode   BARCODE    Specify barcode or list of barcodes to extract
   -i, --id        SAMPLE_ID  Sample ID (not needed if using list of barcodes)
   -l, --list                 Indicates --barcode is a list of barcodes in a file
