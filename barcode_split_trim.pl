@@ -136,17 +136,19 @@ my @sorted_barcodes_obs =
         commify( $barcodes_obs{ $_->[0] } ),
         percent(
             $barcodes_obs{ $_->[0] } / ( $total_matched + $total_unmatched )
-        )
+        ),
+        $_->[2]->{id},
     ]
   }
   sort { $b->[1] <=> $a->[1] }
-  map { [ $_, $barcodes_obs{$_} ] }
+  map { [ $_, $barcodes_obs{$_}, $barcode_table{ $_ } ] }
   keys %barcodes_obs;
 open my $bar_log_fh, ">", $directory . join ".", "log_barcodes_observed", "fq_" . $filename, "bar_" . $barcode;
 my $tbl_observed = Text::Table->new(
-    "",
-    "\n&right",
-    "\n&right",
+    "barcode",
+    "count\n&right",
+    "percent\n&right",
+    "id\n&right",
 );
 $tbl_observed->load(@sorted_barcodes_obs);
 print $bar_log_fh $tbl_observed;
