@@ -1,10 +1,13 @@
 #!/usr/bin/env perl
-# basic_barcode_split.pl
-# Mike Covington
-# created: 2012-02-21
+# barcode_split_trim.pl
+# Mike Covington (Maloof Lab, UC-Davis)
+# https://github.com/mfcovington/auto_barcode
+# v1.0: 2012-09-25
+# v0.1: 2012-02-21
 #
-# Description: 
-#
+# Description:
+# - Extracts fastq reads for specified barcode(s) from one or multiple FASTQ files
+# - Writes helpful logs with barcode stats
 use strict;
 use warnings;
 use autodie;
@@ -14,18 +17,18 @@ use File::Basename;
 use File::Path 'make_path';
 use List::Util qw(min max);
 use Statistics::Descriptive;
+use Text::Table;
 
-###TODO:
-#incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
-#fuzzy matching
-#add option for preliminary observed barcode summary
-#add percentages for barcode counts
-#add spaces to front of counts in summary so they are right-aligned
+#TODO:
+# incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
+# fuzzy matching
+# add option for preliminary observed barcode summary
+
 
 #options/defaults
-my ( $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help );
-my $prefix = "";
-my $suffix = "";
+my ( $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help, $version );
+my $prefix  = "";
+my $suffix  = "";
 my $options = GetOptions(
     "barcode=s"  => \$barcode,
     "id=s"       => \$id,
@@ -37,8 +40,12 @@ my $options = GetOptions(
     "autosuffix" => \$autosuffix,
     "notrim"     => \$notrim,
     "help"       => \$help,
+    "version"    => \$version,
 );
 my @fq_files = grep { /f(ast)?q$/i } @ARGV;
+
+my $current_version = "v1.0";
+die "$current_version\n" if $version;
 
 #help/usage
 my $prog = basename($0);
@@ -79,7 +86,7 @@ my $barcode_length = $max_length;
 map { die "Invalid barcode found: $_\n" unless /^[ACGT]{$barcode_length}$/i }
   keys %barcode_table;
 
-#open all filehandles (except fastq in)
+#open all fastq output filehandles
 my ( $filename, $directory, $filesuffix ) = fileparse( $fq_files[0], ".f(ast)?q" );
 $filename = "multi_fq" if @fq_files > 1;
 $directory = $outdir . "/" if defined $outdir;
@@ -131,67 +138,103 @@ close $unmatched_fh;
 
 #observed barcodes summary
 my @sorted_barcodes_obs =
-  map  { join "\t", $_->[0], $barcodes_obs{ $_->[0] } }
-  sort {  $b->[1] <=> $a->[1] }
-  map  { [ $_, $barcodes_obs{$_} ] }
+  map {
+    [
+        $_->[0],
+        commify( $barcodes_obs{ $_->[0] } ),
+        percent(
+            $barcodes_obs{ $_->[0] } / ( $total_matched + $total_unmatched )
+        ),
+        $_->[2]->{id},
+    ]
+  }
+  sort { $b->[1] <=> $a->[1] }
+  map { [ $_, $barcodes_obs{$_}, $barcode_table{ $_ } ] }
   keys %barcodes_obs;
 open my $bar_log_fh, ">", $directory . join ".", "log_barcodes_observed", "fq_" . $filename, "bar_" . $barcode;
-say $bar_log_fh join "\n", @sorted_barcodes_obs;
+my $tbl_observed = Text::Table->new(
+    "barcode",
+    "count\n&right",
+    "percent\n&right",
+    "id\n&right",
+);
+$tbl_observed->load(@sorted_barcodes_obs);
+print $bar_log_fh $tbl_observed;
 close $bar_log_fh;
 
 #counts summary
 my @barcode_counts =
-  map { join "\t", $_->[0], $_->[1], $_->[2] }
+  map { [ $_->[0], $_->[1], $_->[2] ] }
   sort { $a->[1] cmp $b->[1] }
   map { [ $_, $barcode_table{$_}->{id}, commify( $barcode_table{$_}->{count} ) ] }
   keys %barcode_table;
+
 open my $count_log_fh, ">", $directory . join ".", "log_barcode_counts", "fq_" . $filename, "bar_" . $barcode;
 say $count_log_fh "Barcode splitting summary for:";
 map { say $count_log_fh "  " . $_ } @fq_files;
 my $max_fq_length = max map { length } @fq_files;
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
-say $count_log_fh join "\t",
-  "matched  ",
-  commify($total_matched),
-  percent( $total_matched / ( $total_matched + $total_unmatched ) );
-say $count_log_fh join "\t",
-  "unmatched",
-  commify($total_unmatched),
-  percent( $total_unmatched / ( $total_matched + $total_unmatched ) );
+my $tbl_matched = Text::Table->new(
+    "",
+    "\n&right",
+    "\n&right",
+);
+$tbl_matched->load(
+    [
+        "matched",
+        commify($total_matched),
+        percent( $total_matched / ( $total_matched + $total_unmatched ) ),
+    ],
+    [
+        "unmatched",
+        commify($total_unmatched),
+        percent( $total_unmatched / ( $total_matched + $total_unmatched ) ),
+    ],
+);
+
+print $count_log_fh $tbl_matched;
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
-my $stat = Statistics::Descriptive::Full->new();;
+my $stat = Statistics::Descriptive::Full->new();
 $stat->add_data( map{ $barcode_table{$_}->{count} } keys %barcode_table );
-say $count_log_fh "barcodes\t" . $stat->count();
-say $count_log_fh "min     \t" . $stat->min();
-say $count_log_fh "max     \t" . $stat->max();
-say $count_log_fh "mean    \t" . round( $stat->mean() );
-say $count_log_fh "median  \t" . $stat->median();
+my $tbl_stats = Text::Table->new(
+    "",
+    "\n&right",
+);
+$tbl_stats->load(
+    [ "barcodes", commify( $stat->count() ) ],
+    [ "min",      commify( $stat->min() ) ],
+    [ "max",      commify( $stat->max() ) ],
+    [ "mean",     commify( round( $stat->mean() ) ) ],
+    [ "median",   commify( $stat->median() ) ],
+);
+print $count_log_fh $tbl_stats;
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
-say $count_log_fh "barcode\tid\tcount";
-say $count_log_fh join "\n", @barcode_counts;
+my $tbl_counts = Text::Table->new(
+    "barcode",
+    "id",
+    "count\n&right",
+);
+$tbl_counts->load(@barcode_counts);
+print $count_log_fh $tbl_counts;
 close $count_log_fh;
-
-
-
-
 
 exit;
 
 sub percent {
-    local $_  = shift;
-    return int($_  * 100 + 0.5) . "%";
+    local $_ = shift;
+    return sprintf( "%.1f", $_ * 100 ) . "%";
 }
 
 sub round {
-    local $_  = shift;
-    return int($_  + 0.5);
+    local $_ = shift;
+    return int( $_ + 0.5 );
 }
 
 sub commify {
-    local $_  = shift;
+    local $_ = shift;
     1 while s/^([-+]?\d+)(\d{3})/$1,$2/;
     return $_;
 }
@@ -208,6 +251,7 @@ DESCRIPTION
 
 OPTIONS
   -h, --help                 Print this help message
+  -v, --version              Print version number
   -b, --barcode   BARCODE    Specify barcode or list of barcodes to extract
   -i, --id        SAMPLE_ID  Sample ID (not needed if using list of barcodes)
   -l, --list                 Indicates --barcode is a list of barcodes in a file
