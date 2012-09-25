@@ -23,7 +23,9 @@ use Text::Table;
 # incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
 # fuzzy matching
 # add option for preliminary observed barcode summary
-
+# add percents to stats and counts
+# change format of counts summary to id/barcode/count/percent
+# align barcode stats by decimal
 
 #options/defaults
 my ( $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help, $version );
