@@ -2,6 +2,7 @@
 # barcode_split_trim.pl
 # Mike Covington (Maloof Lab, UC-Davis)
 # https://github.com/mfcovington/auto_barcode
+# v1.1: 2012-09-25 - improvements to log
 # v1.0: 2012-09-25
 # v0.1: 2012-02-21
 #
@@ -23,7 +24,6 @@ use Text::Table;
 # incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
 # fuzzy matching
 # add option for preliminary observed barcode summary
-
 
 #options/defaults
 my ( $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help, $version );
@@ -136,6 +136,8 @@ for my $fq_in (@fq_files) {
 map { close $barcode_table{$_}->{fh} } keys %barcode_table;
 close $unmatched_fh;
 
+my $total_count = $total_matched + $total_unmatched;
+
 #observed barcodes summary
 my @sorted_barcodes_obs =
   map {
@@ -143,7 +145,7 @@ my @sorted_barcodes_obs =
         $_->[0],
         commify( $barcodes_obs{ $_->[0] } ),
         percent(
-            $barcodes_obs{ $_->[0] } / ( $total_matched + $total_unmatched )
+            $barcodes_obs{ $_->[0] } / ( $total_count )
         ),
         $_->[2]->{id},
     ]
@@ -164,9 +166,9 @@ close $bar_log_fh;
 
 #counts summary
 my @barcode_counts =
-  map { [ $_->[0], $_->[1], $_->[2] ] }
-  sort { $a->[1] cmp $b->[1] }
-  map { [ $_, $barcode_table{$_}->{id}, commify( $barcode_table{$_}->{count} ) ] }
+  # map { [ $_->[0], $_->[1], $_->[2], $_->[3] ] }
+  sort { $a->[0] cmp $b->[0] }
+  map { [ $barcode_table{$_}->{id}, $_, commify( $barcode_table{$_}->{count} ), percent( $barcode_table{$_}->{count} / $total_count ) ] }
   keys %barcode_table;
 
 open my $count_log_fh, ">", $directory . join ".", "log_barcode_counts", "fq_" . $filename, "bar_" . $barcode;
@@ -200,22 +202,24 @@ my $stat = Statistics::Descriptive::Full->new();
 $stat->add_data( map{ $barcode_table{$_}->{count} } keys %barcode_table );
 my $tbl_stats = Text::Table->new(
     "",
+    "\n&num",
     "\n&right",
 );
 $tbl_stats->load(
-    [ "barcodes", commify( $stat->count() ) ],
-    [ "min",      commify( $stat->min() ) ],
-    [ "max",      commify( $stat->max() ) ],
-    [ "mean",     commify( round( $stat->mean() ) ) ],
-    [ "median",   commify( $stat->median() ) ],
+    [ "barcodes", commify( $stat->count ) ],
+    [ "min",      commify( $stat->min ),           percent( $stat->min / $total_count ) ],
+    [ "max",      commify( $stat->max ),           percent( $stat->max / $total_count ) ],
+    [ "mean",     commify( round( $stat->mean ) ), percent( round( $stat->mean ) / $total_count ) ],
+    [ "median",   commify( $stat->median ),        percent( $stat->median / $total_count ) ],
 );
 print $count_log_fh $tbl_stats;
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
 my $tbl_counts = Text::Table->new(
-    "barcode",
     "id",
+    "barcode",
     "count\n&right",
+    "percent\n&right",
 );
 $tbl_counts->load(@barcode_counts);
 print $count_log_fh $tbl_counts;
