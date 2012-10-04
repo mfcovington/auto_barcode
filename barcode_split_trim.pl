@@ -2,7 +2,7 @@
 # barcode_split_trim.pl
 # Mike Covington (Maloof Lab, UC-Davis)
 # https://github.com/mfcovington/auto_barcode
-# v1.2: 2012-10-03 - add option to output stats (w/o creating fastq files)
+# v1.2: 2012-10-03 - adds option to output stats (w/o creating fastq files)
 # v1.1: 2012-09-25 - improvements to log
 # v1.0: 2012-09-25
 # v0.1: 2012-02-21
