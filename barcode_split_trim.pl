@@ -2,6 +2,7 @@
 # barcode_split_trim.pl
 # Mike Covington (Maloof Lab, UC-Davis)
 # https://github.com/mfcovington/auto_barcode
+# v1.2: 2012-10-03 - add option to output stats (w/o creating fastq files)
 # v1.1: 2012-09-25 - improvements to log
 # v1.0: 2012-09-25
 # v0.1: 2012-02-21
@@ -23,10 +24,9 @@ use Text::Table;
 #TODO:
 # incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
 # fuzzy matching
-# add option for preliminary observed barcode summary
 
 #options/defaults
-my ( $barcode, $id, $list, $outdir, $notrim, $autoprefix, $autosuffix, $help, $version );
+my ( $barcode, $id, $list, $outdir, $notrim, $stats, $autoprefix, $autosuffix, $help, $version );
 my $prefix  = "";
 my $suffix  = "";
 my $options = GetOptions(
@@ -39,6 +39,7 @@ my $options = GetOptions(
     "suffix=s"   => \$suffix,
     "autosuffix" => \$autosuffix,
     "notrim"     => \$notrim,
+    "stats"      => \$stats,
     "help"       => \$help,
     "version"    => \$version,
 );
@@ -96,12 +97,14 @@ $suffix = "." . $suffix unless $suffix eq "";
 $prefix = join ".", $filename, $prefix if $autoprefix;
 $barcode = fileparse($barcode);
 my $unmatched_fq_out = $directory . "unmatched." . $prefix . "fq_" . $filename . ".bar_" . $barcode . $suffix . ".fq";
-open my $unmatched_fh, ">", $unmatched_fq_out;
-for ( keys %barcode_table ) {
-    my $temp_suffix = $suffix;
-    $temp_suffix = join ".", $suffix, $_ if $autosuffix;
-    my $fq_out = $directory . $prefix . $barcode_table{$_}->{id} . $temp_suffix . ".fq";
-    open $barcode_table{$_}->{fh}, ">", $fq_out;
+open my $unmatched_fh, ">", $unmatched_fq_out unless $stats;
+unless ($stats) {
+    for ( keys %barcode_table ) {
+        my $temp_suffix = $suffix;
+        $temp_suffix = join ".", $suffix, $_ if $autosuffix;
+        my $fq_out = $directory . $prefix . $barcode_table{$_}->{id} . $temp_suffix . ".fq";
+        open $barcode_table{$_}->{fh}, ">", $fq_out;
+    }
 }
 
 #split and trim
@@ -123,18 +126,22 @@ for my $fq_in (@fq_files) {
             $seq = substr $seq, $barcode_length + 1 unless $notrim;
             $qual = substr $qual, $barcode_length + 1 unless $notrim;
             print { $barcode_table{$cur_barcode}->{fh} }
-              $read_id . $seq . $qual_id . $qual;
+              $read_id . $seq . $qual_id . $qual
+              unless $stats;
             $barcode_table{$cur_barcode}->{count}++;
             $total_matched++;
         }
         else {
-            print $unmatched_fh $read_id . $seq . $qual_id . $qual;
+            print $unmatched_fh $read_id . $seq . $qual_id . $qual
+              unless $stats;
             $total_unmatched++;
         }
     }
 }
-map { close $barcode_table{$_}->{fh} } keys %barcode_table;
-close $unmatched_fh;
+unless ($stats) {
+    map { close $barcode_table{$_}->{fh} } keys %barcode_table;
+    close $unmatched_fh;
+}
 
 my $total_count = $total_matched + $total_unmatched;
 
@@ -260,6 +267,7 @@ OPTIONS
   -i, --id        SAMPLE_ID  Sample ID (not needed if using list of barcodes)
   -l, --list                 Indicates --barcode is a list of barcodes in a file
   -n, --notrim               Split without trimming barcodes off
+  -st, --stats               Output summary stats only (w/o creating fastq files)
   -o, --outdir    DIR        Output file is saved in the specified directory
                               (or same directory as IN.FASTQ, if --outdir is not used)
 
@@ -267,7 +275,7 @@ NAMING OPTIONS
   --autoprefix               Append FASTQ file name onto output
   --autosuffix               Append barcode onto output 
   -p, --prefix    PREFIX     Add custom prefix to output
-  -s, --suffix    SUFFIX     Add custom suffix to output
+  -su, --suffix   SUFFIX     Add custom suffix to output
 
 OUTPUT
   An output file in fastq format is written for each barcode to the directory
