@@ -114,12 +114,17 @@ my %barcodes_obs;
 for my $fq_in (@fq_files) {
     open my $fq_in_fh, "<", $fq_in;
     while ( my $read_id = <$fq_in_fh> ) {
-        die
-          "Encountered sequence ID that doesn't start with '\@' on line $. of FASTQ file: $read_id  Invalid or corrupt FASTQ file?\n"
-          unless $read_id =~ /^@/;
         my $seq     = <$fq_in_fh>;
         my $qual_id = <$fq_in_fh>;
         my $qual    = <$fq_in_fh>;
+
+        die
+          "Encountered sequence ID ($read_id) that doesn't start with '\@' on line $. of FASTQ file: $fq_in...\nInvalid or corrupt FASTQ file?\n"
+          unless $read_id =~ /^@/;
+        die
+          "Encountered read ($read_id) with unequal sequence and quality lengths near line $. of FASTQ file: $fq_in...\nInvalid or corrupt FASTQ file?\n"
+          unless length $seq == length $qual;
+
         my $cur_barcode = substr $seq, 0, $barcode_length;
         $barcodes_obs{$cur_barcode}++;
         if ( /^$cur_barcode/i ~~ %barcode_table ) {
@@ -273,7 +278,7 @@ OPTIONS
 
 NAMING OPTIONS
   --autoprefix               Append FASTQ file name onto output
-  --autosuffix               Append barcode onto output 
+  --autosuffix               Append barcode onto output
   -p, --prefix    PREFIX     Add custom prefix to output
   -su, --suffix   SUFFIX     Add custom suffix to output
 
