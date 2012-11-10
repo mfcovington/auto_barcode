@@ -2,6 +2,7 @@
 # barcode_split_trim.pl
 # Mike Covington (Maloof Lab, UC-Davis)
 # https://github.com/mfcovington/auto_barcode
+# v1.3: 2012-11-09 - adds summary plotting and more fastq validation
 # v1.2: 2012-10-03 - adds option to output stats (w/o creating fastq files)
 # v1.1: 2012-09-25 - improvements to log
 # v1.0: 2012-09-25
@@ -25,8 +26,13 @@ use Text::Table;
 # incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
 # fuzzy matching
 
+my $current_version = "v1.3";
+
 #options/defaults
-my ( $barcode, $id, $list, $outdir, $notrim, $stats, $autoprefix, $autosuffix, $help, $version );
+my (
+    $barcode, $id,         $list,       $outdir, $notrim,
+    $stats,   $autoprefix, $autosuffix, $help,   $version
+);
 my $prefix  = "";
 my $suffix  = "";
 my $options = GetOptions(
@@ -45,10 +51,8 @@ my $options = GetOptions(
 );
 my @fq_files = grep { /f(ast)?q$/i } @ARGV;
 
-my $current_version = "v1.0";
-die "$current_version\n" if $version;
-
 #help/usage
+die "$current_version\n" if $version;
 my $prog = basename($0);
 print_usage()
   and die "WARNING: To run successfully, remember to remove '--help'.\n"
@@ -58,7 +62,8 @@ print_usage()
   unless defined $barcode;
 print_usage()
   and die "ERROR: Missing sample ID or barcode list indicator ('--list').\n"
-  unless defined $id or defined $list;
+  unless defined $id
+  or defined $list;
 print_usage()
   and die "ERROR: Missing path to FASTQ file(s) (--list).\n"
   unless scalar @fq_files > 0;
@@ -178,7 +183,6 @@ close $bar_log_fh;
 
 #counts summary
 my @barcode_counts =
-  # map { [ $_->[0], $_->[1], $_->[2], $_->[3] ] }
   sort { $a->[0] cmp $b->[0] }
   map { [ $barcode_table{$_}->{id}, $_, commify( $barcode_table{$_}->{count} ), percent( $barcode_table{$_}->{count} / $total_count ) ] }
   keys %barcode_table;
