@@ -177,7 +177,7 @@ First we extract the [relevant info][LOG2_converted] from the log of observed ba
 
     ./log_converter.pl sample_files/output/log_barcodes_observed.fq_sequences.bar_barcode.list
 
-Then in R, we define the `barcode_plot` function (found in `barcode_plot.R`) and run the following code:
+Then in R, we define the `barcode_plot` function (found in [`barcode_plot.R`][barcode_plot]) and run the following code:
 
 ```R
 setwd("sample_files/output/")
@@ -212,4 +212,6 @@ For this plot (saved to `sample_files/output/demo.barcodes.png`), barcodes are s
 [LOG1]: https://raw.github.com/mfcovington/auto_barcode/master/sample_files/output/log_barcode_counts.fq_sequences.bar_barcode.list
 [LOG2]: https://raw.github.com/mfcovington/auto_barcode/master/sample_files/output/log_barcodes_observed.fq_sequences.bar_barcode.list
 [LOG2_converted]: https://raw.github.com/mfcovington/auto_barcode/master/sample_files/output/log_barcodes_observed.fq_sequences.bar_barcode.list.tsv
+
+[barcode_plot]: https://github.com/mfcovington/auto_barcode/blob/master/barcode_plot.R
 
