@@ -1,0 +1,27 @@
+Barcode splitting summary for:
+  sample_files/sequences.fq
+---------------------------
+matched   24,459 97.8%
+unmatched    541  2.2%
+---------------------------
+barcodes    14       
+min      1,260   5.0%
+max      2,200   8.8%
+mean     1,747   7.0%
+median   1,735.5 6.9%
+---------------------------
+id        barcode count percent
+aardvark1 GATAC   1,595 6.4%   
+aardvark2 GGATG   1,839 7.4%   
+marmot1   TACGC   1,758 7.0%   
+marmot2   ATCGT   1,504 6.0%   
+marmot3   ATTCC   1,614 6.5%   
+marmot4   CCAGC   1,468 5.9%   
+puffin1   CTAGT   1,476 5.9%   
+puffin2   TAGAG   1,260 5.0%   
+puffin3   TAGTC   2,102 8.4%   
+puffin4   GGTCA   1,964 7.9%   
+tarsier1  TCGAT   2,010 8.0%   
+tarsier2  AGCGC   2,200 8.8%   
+tarsier3  CCAAT   1,713 6.9%   
+tarsier4  CGCTG   1,956 7.8%   
