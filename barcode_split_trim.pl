@@ -53,29 +53,17 @@ my @fq_files = grep { /f(ast)?q$/i } @ARGV;
 
 validate_options( $version, $help, $barcode, $id, $list, \@fq_files );
 
-#gather barcodes to search for
-my %barcode_table;
-if ($list) {
-    open my $barcode_list_fh, '<', $barcode;
-    %barcode_table =
-      map {
-        chomp;
-        my @delim = split /\t/;
-        ( $delim[0], { 'id' => $delim[1], 'count' => 0 } )
-      } <$barcode_list_fh>;
-    close $barcode_list_fh;
-}
-else { $barcode_table{$barcode} = [ $id, 0 ]; }
+my $barcode_table = get_barcodes( $list, $barcode, $id );
 
 #check lengths and integrity of barcodes
-my $min_length = min map { length } keys %barcode_table;
-my $max_length = max map { length } keys %barcode_table;
+my $min_length = min map { length } keys $barcode_table;
+my $max_length = max map { length } keys $barcode_table;
 die
   "Unexpected variation in barcode length (min=$min_length, max=$max_length)\n"
   unless $min_length == $max_length;
 my $barcode_length = $max_length;
 map { die "Invalid barcode found: $_\n" unless /^[ACGT]{$barcode_length}$/i }
-  keys %barcode_table;
+  keys $barcode_table;
 
 #open all fastq output filehandles
 my ( $filename, $directory, $filesuffix ) = fileparse( $fq_files[0], ".f(ast)?q" );
@@ -89,11 +77,11 @@ $barcode = fileparse($barcode);
 my $unmatched_fq_out = $directory . "unmatched." . $prefix . "fq_" . $filename . ".bar_" . $barcode . $suffix . ".fq";
 open my $unmatched_fh, ">", $unmatched_fq_out unless $stats;
 unless ($stats) {
-    for ( keys %barcode_table ) {
+    for ( keys $barcode_table ) {
         my $temp_suffix = $suffix;
         $temp_suffix = join ".", $suffix, $_ if $autosuffix;
-        my $fq_out = $directory . $prefix . $barcode_table{$_}->{id} . $temp_suffix . ".fq";
-        open $barcode_table{$_}->{fh}, ">", $fq_out;
+        my $fq_out = $directory . $prefix . $$barcode_table{$_}->{id} . $temp_suffix . ".fq";
+        open $$barcode_table{$_}->{fh}, ">", $fq_out;
     }
 }
 
@@ -117,13 +105,13 @@ for my $fq_in (@fq_files) {
 
         my $cur_barcode = substr $seq, 0, $barcode_length;
         $barcodes_obs{$cur_barcode}++;
-        if ( /^$cur_barcode/i ~~ %barcode_table ) {
+        if ( /^$cur_barcode/i ~~ %$barcode_table ) {
             $seq = substr $seq, $barcode_length + 1 unless $notrim;
             $qual = substr $qual, $barcode_length + 1 unless $notrim;
-            print { $barcode_table{$cur_barcode}->{fh} }
+            print { $$barcode_table{$cur_barcode}->{fh} }
               $read_id . $seq . $qual_id . $qual
               unless $stats;
-            $barcode_table{$cur_barcode}->{count}++;
+            $$barcode_table{$cur_barcode}->{count}++;
             $total_matched++;
         }
         else {
@@ -134,7 +122,7 @@ for my $fq_in (@fq_files) {
     }
 }
 unless ($stats) {
-    map { close $barcode_table{$_}->{fh} } keys %barcode_table;
+    map { close $$barcode_table{$_}->{fh} } keys $barcode_table;
     close $unmatched_fh;
 }
 
@@ -153,7 +141,7 @@ my @sorted_barcodes_obs =
     ]
   }
   sort { $b->[1] <=> $a->[1] }
-  map { [ $_, $barcodes_obs{$_}, $barcode_table{ $_ } ] }
+  map { [ $_, $barcodes_obs{$_}, $$barcode_table{ $_ } ] }
   keys %barcodes_obs;
 open my $bar_log_fh, ">", $directory . join ".", "log_barcodes_observed", "fq_" . $filename, "bar_" . $barcode;
 my $tbl_observed = Text::Table->new(
@@ -169,8 +157,8 @@ close $bar_log_fh;
 #counts summary
 my @barcode_counts =
   sort { $a->[0] cmp $b->[0] }
-  map { [ $barcode_table{$_}->{id}, $_, commify( $barcode_table{$_}->{count} ), percent( $barcode_table{$_}->{count} / $total_count ) ] }
-  keys %barcode_table;
+  map { [ $$barcode_table{$_}->{id}, $_, commify( $$barcode_table{$_}->{count} ), percent( $$barcode_table{$_}->{count} / $total_count ) ] }
+  keys $barcode_table;
 
 open my $count_log_fh, ">", $directory . join ".", "log_barcode_counts", "fq_" . $filename, "bar_" . $barcode;
 say $count_log_fh "Barcode splitting summary for:";
@@ -200,7 +188,7 @@ print $count_log_fh $tbl_matched;
 say $count_log_fh "-" x ( $max_fq_length + 2 );
 
 my $stat = Statistics::Descriptive::Full->new();
-$stat->add_data( map{ $barcode_table{$_}->{count} } keys %barcode_table );
+$stat->add_data( map{ $$barcode_table{$_}->{count} } keys $barcode_table );
 my $tbl_stats = Text::Table->new(
     "",
     "\n&num",
@@ -305,4 +293,23 @@ EXAMPLES
   $prog --help
 
 EOF
+}
+
+sub get_barcodes {
+    my ( $list, $barcode, $id ) = @_;
+
+    my %barcode_table;
+    if ($list) {
+        open my $barcode_list_fh, '<', $barcode;
+        %barcode_table =
+          map {
+            chomp;
+            my @delim = split /\t/;
+            ( $delim[0], { 'id' => $delim[1], 'count' => 0 } )
+          } <$barcode_list_fh>;
+        close $barcode_list_fh;
+    }
+    else { $barcode_table{$barcode} = [ $id, 0 ]; }
+
+    return \%barcode_table;
 }
