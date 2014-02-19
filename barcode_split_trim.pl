@@ -57,25 +57,10 @@ my $barcode_table = get_barcodes( $list, $barcode, $id );
 
 my $barcode_length = validate_barcodes($barcode_table);
 
-#open all fastq output filehandles
-my ( $filename, $directory, $filesuffix ) = fileparse( $fq_files[0], ".f(ast)?q" );
-$filename = "multi_fq" if @fq_files > 1;
-$directory = $outdir . "/" if defined $outdir;
-make_path($directory);
-$prefix .= "." unless $prefix eq "";
-$suffix = "." . $suffix unless $suffix eq "";
-$prefix = join ".", $filename, $prefix if $autoprefix;
-$barcode = fileparse($barcode);
-my $unmatched_fq_out = $directory . "unmatched." . $prefix . "fq_" . $filename . ".bar_" . $barcode . $suffix . ".fq";
-open my $unmatched_fh, ">", $unmatched_fq_out unless $stats;
-unless ($stats) {
-    for ( keys $barcode_table ) {
-        my $temp_suffix = $suffix;
-        $temp_suffix = join ".", $suffix, $_ if $autosuffix;
-        my $fq_out = $directory . $prefix . $$barcode_table{$_}->{id} . $temp_suffix . ".fq";
-        open $$barcode_table{$_}->{fh}, ">", $fq_out;
-    }
-}
+my ( $directory, $filename, $unmatched_fh, $barcode_name )
+    = open_fq_fhs_in_bulk( $barcode_table, \@fq_files, $outdir,
+                           $prefix,        $suffix,    $autoprefix,
+                           $autosuffix,    $barcode,   $stats );
 
 #split and trim
 my $total_matched   = 0;
@@ -135,7 +120,7 @@ my @sorted_barcodes_obs =
   sort { $b->[1] <=> $a->[1] }
   map { [ $_, $barcodes_obs{$_}, $$barcode_table{ $_ } ] }
   keys %barcodes_obs;
-open my $bar_log_fh, ">", $directory . join ".", "log_barcodes_observed", "fq_" . $filename, "bar_" . $barcode;
+open my $bar_log_fh, ">", $directory . join ".", "log_barcodes_observed", "fq_" . $filename, "bar_" . $barcode_name;
 my $tbl_observed = Text::Table->new(
     "barcode",
     "count\n&right",
@@ -152,7 +137,7 @@ my @barcode_counts =
   map { [ $$barcode_table{$_}->{id}, $_, commify( $$barcode_table{$_}->{count} ), percent( $$barcode_table{$_}->{count} / $total_count ) ] }
   keys $barcode_table;
 
-open my $count_log_fh, ">", $directory . join ".", "log_barcode_counts", "fq_" . $filename, "bar_" . $barcode;
+open my $count_log_fh, ">", $directory . join ".", "log_barcode_counts", "fq_" . $filename, "bar_" . $barcode_name;
 say $count_log_fh "Barcode splitting summary for:";
 map { say $count_log_fh "  " . $_ } @fq_files;
 my $max_fq_length = max map { length } @fq_files;
@@ -319,4 +304,45 @@ sub validate_barcodes {
       keys $barcode_table;
 
     return $barcode_length;
+}
+
+sub open_fq_fhs_in_bulk {
+    my ($barcode_table, $fq_files, $outdir,
+        $prefix,        $suffix,   $autoprefix,
+        $autosuffix,    $barcode,  $stats
+    ) = @_;
+
+    #open all fastq output filehandles
+    my ( $filename, $directory, $filesuffix )
+        = fileparse( $$fq_files[0], ".f(ast)?q" );
+    $filename  = "multi_fq"    if @$fq_files > 1;
+    $directory = $outdir . "/" if defined $outdir;
+    make_path($directory);
+    $prefix .= "." unless $prefix eq "";
+    $suffix = "." . $suffix unless $suffix eq "";
+    $prefix = join ".", $filename, $prefix if $autoprefix;
+    my $barcode_name = fileparse($barcode);
+    my $unmatched_fq_out
+        = $directory
+        . "unmatched."
+        . $prefix . "fq_"
+        . $filename . ".bar_"
+        . $barcode_name
+        . $suffix . ".fq";
+    open my $unmatched_fh, ">", $unmatched_fq_out unless $stats;
+
+    unless ($stats) {
+        for ( keys $barcode_table ) {
+            my $temp_suffix = $suffix;
+            $temp_suffix = join ".", $suffix, $_ if $autosuffix;
+            my $fq_out
+                = $directory
+                . $prefix
+                . $$barcode_table{$_}->{id}
+                . $temp_suffix . ".fq";
+            open $$barcode_table{$_}->{fh}, ">", $fq_out;
+        }
+    }
+
+    return $directory, $filename, $unmatched_fh, $barcode_name;
 }
