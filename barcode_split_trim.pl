@@ -55,15 +55,7 @@ validate_options( $version, $help, $barcode, $id, $list, \@fq_files );
 
 my $barcode_table = get_barcodes( $list, $barcode, $id );
 
-#check lengths and integrity of barcodes
-my $min_length = min map { length } keys $barcode_table;
-my $max_length = max map { length } keys $barcode_table;
-die
-  "Unexpected variation in barcode length (min=$min_length, max=$max_length)\n"
-  unless $min_length == $max_length;
-my $barcode_length = $max_length;
-map { die "Invalid barcode found: $_\n" unless /^[ACGT]{$barcode_length}$/i }
-  keys $barcode_table;
+my $barcode_length = validate_barcodes($barcode_table);
 
 #open all fastq output filehandles
 my ( $filename, $directory, $filesuffix ) = fileparse( $fq_files[0], ".f(ast)?q" );
@@ -312,4 +304,19 @@ sub get_barcodes {
     else { $barcode_table{$barcode} = [ $id, 0 ]; }
 
     return \%barcode_table;
+}
+
+sub validate_barcodes {
+    my $barcode_table = shift;
+
+    my $min_length = min map { length } keys $barcode_table;
+    my $max_length = max map { length } keys $barcode_table;
+    die
+      "Unexpected variation in barcode length (min=$min_length, max=$max_length)\n"
+      unless $min_length == $max_length;
+    my $barcode_length = $max_length;
+    map { die "Invalid barcode found: $_\n" unless /^[ACGT]{$barcode_length}$/i }
+      keys $barcode_table;
+
+    return $barcode_length;
 }
