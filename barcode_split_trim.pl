@@ -70,31 +70,10 @@ close_fq_fhs( $barcode_table, $stats );
 
 my $total_count = $total_matched + $total_unmatched;
 
-#observed barcodes summary
-my @sorted_barcodes_obs =
-  map {
-    [
-        $_->[0],
-        commify( $$barcodes_obs{ $_->[0] } ),
-        percent(
-            $$barcodes_obs{ $_->[0] } / ( $total_count )
-        ),
-        $_->[2]->{id},
-    ]
-  }
-  sort { $b->[1] <=> $a->[1] }
-  map { [ $_, $$barcodes_obs{$_}, $$barcode_table{ $_ } ] }
-  keys $barcodes_obs;
-open my $bar_log_fh, ">", $directory . join ".", "log_barcodes_observed", "fq_" . $filename, "bar_" . $barcode_name;
-my $tbl_observed = Text::Table->new(
-    "barcode",
-    "count\n&right",
-    "percent\n&right",
-    "id\n&right",
+summarize_observed_barcodes(
+    $barcode_table, $barcodes_obs, $total_count,
+    $directory,     $filename,     $barcode_name
 );
-$tbl_observed->load(@sorted_barcodes_obs);
-print $bar_log_fh $tbl_observed;
-close $bar_log_fh;
 
 #counts summary
 my @barcode_counts =
@@ -362,4 +341,32 @@ sub close_fq_fhs {
         map { close $$barcode_table{$_}->{fh} } keys $barcode_table;
         close $unmatched_fh;
     }
+}
+
+sub summarize_observed_barcodes {
+    my ( $barcode_table, $barcodes_obs, $total_count, $directory, $filename, $barcode_name ) = @_;
+
+    #observed barcodes summary
+    my @sorted_barcodes_obs
+        = map {
+        [   $_->[0],
+            commify( $$barcodes_obs{ $_->[0] } ),
+            percent( $$barcodes_obs{ $_->[0] } / ($total_count) ),
+            $_->[2]->{id},
+        ]
+        }
+        sort { $b->[1] <=> $a->[1] }
+        map { [ $_, $$barcodes_obs{$_}, $$barcode_table{$_} ] }
+        keys $barcodes_obs;
+    open my $bar_log_fh, ">", $directory . join ".", "log_barcodes_observed",
+        "fq_" . $filename, "bar_" . $barcode_name;
+    my $tbl_observed = Text::Table->new(
+        "barcode",
+        "count\n&right",
+        "percent\n&right",
+        "id\n&right",
+    );
+    $tbl_observed->load(@sorted_barcodes_obs);
+    print $bar_log_fh $tbl_observed;
+    close $bar_log_fh;
 }
