@@ -62,46 +62,14 @@ my ( $directory, $filename, $unmatched_fh, $barcode_name )
                            $prefix,        $suffix,    $autoprefix,
                            $autosuffix,    $barcode,   $stats );
 
-#split and trim
-my $total_matched   = 0;
-my $total_unmatched = 0;
-my %barcodes_obs;
-for my $fq_in (@fq_files) {
-    open my $fq_in_fh, "<", $fq_in;
-    while ( my $read_id = <$fq_in_fh> ) {
-        my $seq     = <$fq_in_fh>;
-        my $qual_id = <$fq_in_fh>;
-        my $qual    = <$fq_in_fh>;
-
-        die
-          "Encountered sequence ID ($read_id) that doesn't start with '\@' on line $. of FASTQ file: $fq_in...\nInvalid or corrupt FASTQ file?\n"
-          unless $read_id =~ /^@/;
-        die
-          "Encountered read ($read_id) with unequal sequence and quality lengths near line $. of FASTQ file: $fq_in...\nInvalid or corrupt FASTQ file?\n"
-          unless length $seq == length $qual;
-
-        my $cur_barcode = substr $seq, 0, $barcode_length;
-        $barcodes_obs{$cur_barcode}++;
-        if ( /^$cur_barcode/i ~~ %$barcode_table ) {
-            $seq = substr $seq, $barcode_length + 1 unless $notrim;
-            $qual = substr $qual, $barcode_length + 1 unless $notrim;
-            print { $$barcode_table{$cur_barcode}->{fh} }
-              $read_id . $seq . $qual_id . $qual
-              unless $stats;
-            $$barcode_table{$cur_barcode}->{count}++;
-            $total_matched++;
-        }
-        else {
-            print $unmatched_fh $read_id . $seq . $qual_id . $qual
-              unless $stats;
-            $total_unmatched++;
-        }
-    }
-}
 unless ($stats) {
     map { close $$barcode_table{$_}->{fh} } keys $barcode_table;
     close $unmatched_fh;
 }
+my ( $total_matched, $total_unmatched, $barcodes_obs )
+    = split_trim_barcodes( \@fq_files, $barcode_table, $barcode_length,
+                           $notrim,    $stats );
+
 
 my $total_count = $total_matched + $total_unmatched;
 
@@ -110,16 +78,16 @@ my @sorted_barcodes_obs =
   map {
     [
         $_->[0],
-        commify( $barcodes_obs{ $_->[0] } ),
+        commify( $$barcodes_obs{ $_->[0] } ),
         percent(
-            $barcodes_obs{ $_->[0] } / ( $total_count )
+            $$barcodes_obs{ $_->[0] } / ( $total_count )
         ),
         $_->[2]->{id},
     ]
   }
   sort { $b->[1] <=> $a->[1] }
-  map { [ $_, $barcodes_obs{$_}, $$barcode_table{ $_ } ] }
-  keys %barcodes_obs;
+  map { [ $_, $$barcodes_obs{$_}, $$barcode_table{ $_ } ] }
+  keys $barcodes_obs;
 open my $bar_log_fh, ">", $directory . join ".", "log_barcodes_observed", "fq_" . $filename, "bar_" . $barcode_name;
 my $tbl_observed = Text::Table->new(
     "barcode",
@@ -345,4 +313,47 @@ sub open_fq_fhs_in_bulk {
     }
 
     return $directory, $filename, $unmatched_fh, $barcode_name;
+}
+
+sub split_trim_barcodes {
+    my ( $fq_files, $barcode_table, $barcode_length, $notrim, $stats ) = @_;
+
+    #split and trim
+    my $total_matched   = 0;
+    my $total_unmatched = 0;
+    my %barcodes_obs;
+    for my $fq_in (@$fq_files) {
+        open my $fq_in_fh, "<", $fq_in;
+        while ( my $read_id = <$fq_in_fh> ) {
+            my $seq     = <$fq_in_fh>;
+            my $qual_id = <$fq_in_fh>;
+            my $qual    = <$fq_in_fh>;
+
+            die
+              "Encountered sequence ID ($read_id) that doesn't start with '\@' on line $. of FASTQ file: $fq_in...\nInvalid or corrupt FASTQ file?\n"
+              unless $read_id =~ /^@/;
+            die
+              "Encountered read ($read_id) with unequal sequence and quality lengths near line $. of FASTQ file: $fq_in...\nInvalid or corrupt FASTQ file?\n"
+              unless length $seq == length $qual;
+
+            my $cur_barcode = substr $seq, 0, $barcode_length;
+            $barcodes_obs{$cur_barcode}++;
+            if ( /^$cur_barcode/i ~~ %$barcode_table ) {
+                $seq  = substr $seq, $barcode_length + 1 unless $notrim;
+                $qual = substr $qual, $barcode_length + 1 unless $notrim;
+                print { $$barcode_table{$cur_barcode}->{fh} }
+                  $read_id . $seq . $qual_id . $qual
+                  unless $stats;
+                $$barcode_table{$cur_barcode}->{count}++;
+                $total_matched++;
+            }
+            else {
+                print $unmatched_fh $read_id . $seq . $qual_id . $qual
+                  unless $stats;
+                $total_unmatched++;
+            }
+        }
+    }
+
+    return $total_matched, $total_unmatched, \%barcodes_obs;
 }
