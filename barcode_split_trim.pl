@@ -51,22 +51,7 @@ my $options = GetOptions(
 );
 my @fq_files = grep { /f(ast)?q$/i } @ARGV;
 
-#help/usage
-die "$current_version\n" if $version;
-my $prog = basename($0);
-print_usage()
-  and die "WARNING: To run successfully, remember to remove '--help'.\n"
-  if $help;
-print_usage()
-  and die "ERROR: Missing barcode or path to barcode file.\n"
-  unless defined $barcode;
-print_usage()
-  and die "ERROR: Missing sample ID or barcode list indicator ('--list').\n"
-  unless defined $id
-  or defined $list;
-print_usage()
-  and die "ERROR: Missing path to FASTQ file(s) (--list).\n"
-  unless scalar @fq_files > 0;
+validate_options( $version, $help, $barcode, $id, $list, \@fq_files );
 
 #gather barcodes to search for
 my %barcode_table;
@@ -259,7 +244,29 @@ sub commify {
     return $_;
 }
 
+sub validate_options {
+    my ( $version, $help, $barcode, $id, $list, $fq_files ) = @_;
+
+    die "$current_version\n" if $version;
+
+    print_usage()
+      and die "WARNING: To run successfully, remember to remove '--help'.\n"
+      if $help;
+    print_usage()
+      and die "ERROR: Missing barcode or path to barcode file.\n"
+      unless defined $barcode;
+    print_usage()
+      and die "ERROR: Missing sample ID or barcode list indicator ('--list').\n"
+      unless defined $id
+      or defined $list;
+    print_usage()
+      and die "ERROR: Missing path to FASTQ file(s) (--list).\n"
+      unless scalar $fq_files > 0;
+}
+
 sub print_usage {
+    my $prog = basename($0);
+
     warn <<"EOF";
 
 USAGE
