@@ -62,14 +62,11 @@ my ( $directory, $filename, $unmatched_fh, $barcode_name )
                            $prefix,        $suffix,    $autoprefix,
                            $autosuffix,    $barcode,   $stats );
 
-unless ($stats) {
-    map { close $$barcode_table{$_}->{fh} } keys $barcode_table;
-    close $unmatched_fh;
-}
 my ( $total_matched, $total_unmatched, $barcodes_obs )
     = split_trim_barcodes( \@fq_files, $barcode_table, $barcode_length,
                            $notrim,    $stats );
 
+close_fq_fhs( $barcode_table, $stats );
 
 my $total_count = $total_matched + $total_unmatched;
 
@@ -356,4 +353,13 @@ sub split_trim_barcodes {
     }
 
     return $total_matched, $total_unmatched, \%barcodes_obs;
+}
+
+sub close_fq_fhs {
+    my ( $barcode_table, $stats ) = @_;
+
+    unless ($stats) {
+        map { close $$barcode_table{$_}->{fh} } keys $barcode_table;
+        close $unmatched_fh;
+    }
 }
