@@ -75,65 +75,10 @@ summarize_observed_barcodes(
     $directory,     $filename,     $barcode_name
 );
 
-#counts summary
-my @barcode_counts =
-  sort { $a->[0] cmp $b->[0] }
-  map { [ $$barcode_table{$_}->{id}, $_, commify( $$barcode_table{$_}->{count} ), percent( $$barcode_table{$_}->{count} / $total_count ) ] }
-  keys $barcode_table;
-
-open my $count_log_fh, ">", $directory . join ".", "log_barcode_counts", "fq_" . $filename, "bar_" . $barcode_name;
-say $count_log_fh "Barcode splitting summary for:";
-map { say $count_log_fh "  " . $_ } @fq_files;
-my $max_fq_length = max map { length } @fq_files;
-say $count_log_fh "-" x ( $max_fq_length + 2 );
-
-my $tbl_matched = Text::Table->new(
-    "",
-    "\n&right",
-    "\n&right",
+summarize_counts(
+    $barcode_table, \@fq_files, $total_count,
+    $total_matched, $total_unmatched
 );
-$tbl_matched->load(
-    [
-        "matched",
-        commify($total_matched),
-        percent( $total_matched / ( $total_matched + $total_unmatched ) ),
-    ],
-    [
-        "unmatched",
-        commify($total_unmatched),
-        percent( $total_unmatched / ( $total_matched + $total_unmatched ) ),
-    ],
-);
-
-print $count_log_fh $tbl_matched;
-say $count_log_fh "-" x ( $max_fq_length + 2 );
-
-my $stat = Statistics::Descriptive::Full->new();
-$stat->add_data( map{ $$barcode_table{$_}->{count} } keys $barcode_table );
-my $tbl_stats = Text::Table->new(
-    "",
-    "\n&num",
-    "\n&right",
-);
-$tbl_stats->load(
-    [ "barcodes", commify( $stat->count ) ],
-    [ "min",      commify( $stat->min ),           percent( $stat->min / $total_count ) ],
-    [ "max",      commify( $stat->max ),           percent( $stat->max / $total_count ) ],
-    [ "mean",     commify( round( $stat->mean ) ), percent( round( $stat->mean ) / $total_count ) ],
-    [ "median",   commify( $stat->median ),        percent( $stat->median / $total_count ) ],
-);
-print $count_log_fh $tbl_stats;
-say $count_log_fh "-" x ( $max_fq_length + 2 );
-
-my $tbl_counts = Text::Table->new(
-    "id",
-    "barcode",
-    "count\n&right",
-    "percent\n&right",
-);
-$tbl_counts->load(@barcode_counts);
-print $count_log_fh $tbl_counts;
-close $count_log_fh;
 
 exit;
 
@@ -369,4 +314,68 @@ sub summarize_observed_barcodes {
     $tbl_observed->load(@sorted_barcodes_obs);
     print $bar_log_fh $tbl_observed;
     close $bar_log_fh;
+}
+
+sub summarize_counts {
+    my ( $barcode_table, $fq_files, $total_count, $total_matched, $total_unmatched ) = @_;
+
+    #counts summary
+    my @barcode_counts =
+      sort { $a->[0] cmp $b->[0] }
+      map { [ $$barcode_table{$_}->{id}, $_, commify( $$barcode_table{$_}->{count} ), percent( $$barcode_table{$_}->{count} / $total_count ) ] }
+      keys $barcode_table;
+
+    open my $count_log_fh, ">", $directory . join ".", "log_barcode_counts", "fq_" . $filename, "bar_" . $barcode_name;
+    say $count_log_fh "Barcode splitting summary for:";
+    map { say $count_log_fh "  " . $_ } @$fq_files;
+    my $max_fq_length = max map { length } @$fq_files;
+    say $count_log_fh "-" x ( $max_fq_length + 2 );
+
+    my $tbl_matched = Text::Table->new(
+        "",
+        "\n&right",
+        "\n&right",
+    );
+    $tbl_matched->load(
+        [
+            "matched",
+            commify($total_matched),
+            percent( $total_matched / ( $total_matched + $total_unmatched ) ),
+        ],
+        [
+            "unmatched",
+            commify($total_unmatched),
+            percent( $total_unmatched / ( $total_matched + $total_unmatched ) ),
+        ],
+    );
+
+    print $count_log_fh $tbl_matched;
+    say $count_log_fh "-" x ( $max_fq_length + 2 );
+
+    my $stat = Statistics::Descriptive::Full->new();
+    $stat->add_data( map{ $$barcode_table{$_}->{count} } keys $barcode_table );
+    my $tbl_stats = Text::Table->new(
+        "",
+        "\n&num",
+        "\n&right",
+    );
+    $tbl_stats->load(
+        [ "barcodes", commify( $stat->count ) ],
+        [ "min",      commify( $stat->min ),           percent( $stat->min / $total_count ) ],
+        [ "max",      commify( $stat->max ),           percent( $stat->max / $total_count ) ],
+        [ "mean",     commify( round( $stat->mean ) ), percent( round( $stat->mean ) / $total_count ) ],
+        [ "median",   commify( $stat->median ),        percent( $stat->median / $total_count ) ],
+    );
+    print $count_log_fh $tbl_stats;
+    say $count_log_fh "-" x ( $max_fq_length + 2 );
+
+    my $tbl_counts = Text::Table->new(
+        "id",
+        "barcode",
+        "count\n&right",
+        "percent\n&right",
+    );
+    $tbl_counts->load(@barcode_counts);
+    print $count_log_fh $tbl_counts;
+    close $count_log_fh;
 }
