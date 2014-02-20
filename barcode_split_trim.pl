@@ -402,28 +402,7 @@ sub plot_summary {
                                  count   = $count_data,
                                  matched = $match_data)`);
 
-    my $plot_fxn = <<EOF;    # Adapted from barcode_plot.R
-        barcode_plot <- function(log.df, expt.name) {
-          library("ggplot2")
-
-          log.plot <-
-            ggplot(
-              data = log.df,
-              aes(x = factor(matched), y = count / 1000000)) +
-            geom_boxplot(outlier.size = 0) +
-            geom_jitter() +
-            ggtitle(label = expt.name) +
-            xlab(label = "") +
-            scale_y_continuous(name = "Count\n(million reads)")
-
-          ggsave(
-            filename = paste(sep = "", expt.name, ".barcodes.png"),
-            plot     = log.plot,
-            width    = 4,
-            height   = 5
-          )
-        }
-EOF
+    my $plot_fxn = plot_function();
 
     $R->run($plot_fxn);
     $R->run(qq`barcode_plot(log, "$expt_id")`);
@@ -450,4 +429,29 @@ sub get_vectors {
     $_ = "c($_)" for $barcode_data, $count_data, $match_data;
 
     return $barcode_data, $count_data, $match_data;
+}
+
+sub plot_function {
+    return <<EOF;    # Adapted from barcode_plot.R
+        barcode_plot <- function(log.df, expt.name) {
+          library("ggplot2")
+
+          log.plot <-
+            ggplot(
+              data = log.df,
+              aes(x = factor(matched), y = count / 1000000)) +
+            geom_boxplot(outlier.size = 0) +
+            geom_jitter() +
+            ggtitle(label = expt.name) +
+            xlab(label = "") +
+            scale_y_continuous(name = "Count\n(million reads)")
+
+          ggsave(
+            filename = paste(sep = "", expt.name, ".barcodes.png"),
+            plot     = log.plot,
+            width    = 4,
+            height   = 5
+          )
+        }
+EOF
 }
