@@ -29,15 +29,16 @@ use Text::Table;
 my $current_version = "v1.3";
 
 #options/defaults
-my (
-    $barcode, $id,         $list,       $outdir, $notrim,
-    $stats,   $autoprefix, $autosuffix, $help,   $version
+my ($barcode,    $id,     $expt_id, $list,
+    $outdir,     $notrim, $stats,   $autoprefix,
+    $autosuffix, $help,   $version
 );
 my $prefix  = "";
 my $suffix  = "";
 my $options = GetOptions(
     "barcode=s"  => \$barcode,
     "id=s"       => \$id,
+    "expt_id=s"  => \$expt_id,
     "list"       => \$list,
     "outdir=s"   => \$outdir,
     "autoprefix" => \$autoprefix,
@@ -51,7 +52,8 @@ my $options = GetOptions(
 );
 my @fq_files = grep { /f(ast)?q$/i } @ARGV;
 
-validate_options( $version, $help, $barcode, $id, $list, \@fq_files );
+validate_options( $version, $help, $barcode, $id, $list, $expt_id,
+    \@fq_files );
 
 my $barcode_table = get_barcodes( $list, $barcode, $id );
 
@@ -99,7 +101,7 @@ sub commify {
 }
 
 sub validate_options {
-    my ( $version, $help, $barcode, $id, $list, $fq_files ) = @_;
+    my ( $version, $help, $barcode, $id, $list, $expt_id, $fq_files ) = @_;
 
     die "$current_version\n" if $version;
 
@@ -114,7 +116,10 @@ sub validate_options {
       unless defined $id
       or defined $list;
     print_usage()
-      and die "ERROR: Missing path to FASTQ file(s) (--list).\n"
+      and die "ERROR: Missing Experiment ID ('--expt_id').\n"
+      unless defined $expt_id;
+    print_usage()
+      and die "ERROR: Missing path to FASTQ file(s).\n"
       unless scalar $fq_files > 0;
 }
 
@@ -136,6 +141,7 @@ OPTIONS
   -b, --barcode   BARCODE    Specify barcode or list of barcodes to extract
   -i, --id        SAMPLE_ID  Sample ID (not needed if using list of barcodes)
   -l, --list                 Indicates --barcode is a list of barcodes in a file
+  -e, --expt_id   EXPT_ID    Experiment ID (used for summary plot)
   -n, --notrim               Split without trimming barcodes off
   -st, --stats               Output summary stats only (w/o creating fastq files)
   -o, --outdir    DIR        Output file is saved in the specified directory
