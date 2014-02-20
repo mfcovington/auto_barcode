@@ -26,16 +26,14 @@ use Text::Table;
 my $current_version = "v1.3";
 
 #options/defaults
-my ($barcode,    $id,     $expt_id, $list,
-    $outdir,     $notrim, $stats,   $autoprefix,
-    $autosuffix, $help,   $version
+my ($barcode, $id,         $list,       $outdir, $notrim,
+    $stats,   $autoprefix, $autosuffix, $help,   $version
 );
 my $prefix  = "";
 my $suffix  = "";
 my $options = GetOptions(
     "barcode=s"  => \$barcode,
     "id=s"       => \$id,
-    "expt_id=s"  => \$expt_id,
     "list"       => \$list,
     "outdir=s"   => \$outdir,
     "autoprefix" => \$autoprefix,
@@ -49,8 +47,7 @@ my $options = GetOptions(
 );
 my @fq_files = grep { /f(ast)?q$/i } @ARGV;
 
-validate_options( $version, $help, $barcode, $id, $list, $expt_id,
-    \@fq_files );
+validate_options( $version, $help, $barcode, $id, $list, \@fq_files );
 
 my $barcode_table = get_barcodes( $list, $barcode, $id );
 
@@ -79,7 +76,7 @@ summarize_counts(
     $total_matched, $total_unmatched
 );
 
-plot_summary( $barcodes_obs, $barcode_table, $outdir, $expt_id );
+plot_summary( $barcodes_obs, $barcode_table, $outdir, $id );
 
 exit;
 
@@ -100,7 +97,7 @@ sub commify {
 }
 
 sub validate_options {
-    my ( $version, $help, $barcode, $id, $list, $expt_id, $fq_files ) = @_;
+    my ( $version, $help, $barcode, $id, $list, $fq_files ) = @_;
 
     die "$current_version\n" if $version;
 
@@ -111,12 +108,8 @@ sub validate_options {
       and die "ERROR: Missing barcode or path to barcode file.\n"
       unless defined $barcode;
     print_usage()
-      and die "ERROR: Missing sample ID or barcode list indicator ('--list').\n"
-      unless defined $id
-      or defined $list;
-    print_usage()
-      and die "ERROR: Missing Experiment ID ('--expt_id').\n"
-      unless defined $expt_id;
+      and die "ERROR: Missing Sample/Experiment ID ('--id').\n"
+      unless defined $id;
     print_usage()
       and die "ERROR: Missing path to FASTQ file(s).\n"
       unless scalar $fq_files > 0;
@@ -137,10 +130,9 @@ DESCRIPTION
 OPTIONS
   -h, --help                 Print this help message
   -v, --version              Print version number
+  -i, --id                   Sample or Experiment ID
   -b, --barcode   BARCODE    Specify barcode or list of barcodes to extract
-  -i, --id        SAMPLE_ID  Sample ID (not needed if using list of barcodes)
   -l, --list                 Indicates --barcode is a list of barcodes in a file
-  -e, --expt_id   EXPT_ID    Experiment ID (used for summary plot)
   -n, --notrim               Split without trimming barcodes off
   -st, --stats               Output summary stats only (w/o creating fastq files)
   -o, --outdir    DIR        Output file is saved in the specified directory
@@ -386,7 +378,7 @@ sub summarize_counts {
 }
 
 sub plot_summary {
-    my ( $barcodes_obs, $barcode_table, $outdir, $expt_id ) = @_;
+    my ( $barcodes_obs, $barcode_table, $outdir, $id ) = @_;
 
     my ( $barcode_data, $count_data, $match_data )
         = get_vectors( $barcodes_obs, $barcode_table );
@@ -401,7 +393,7 @@ sub plot_summary {
     my $plot_fxn = plot_function();
 
     $R->run($plot_fxn);
-    $R->run(qq`barcode_plot(log, "$expt_id")`);
+    $R->run(qq`barcode_plot(log, "$id")`);
 }
 
 sub get_vectors {
@@ -429,7 +421,7 @@ sub get_vectors {
 
 sub plot_function {
     return <<EOF;    # Adapted from barcode_plot.R
-        barcode_plot <- function(log.df, expt.name) {
+        barcode_plot <- function(log.df, id) {
           library("ggplot2")
 
           log.plot <-
@@ -438,12 +430,12 @@ sub plot_function {
               aes(x = factor(matched), y = count / 1000000)) +
             geom_boxplot(outlier.size = 0) +
             geom_jitter() +
-            ggtitle(label = expt.name) +
+            ggtitle(label = id) +
             xlab(label = "") +
             scale_y_continuous(name = "Count\n(million reads)")
 
           ggsave(
-            filename = paste(sep = "", expt.name, ".barcodes.png"),
+            filename = paste(sep = "", id, ".barcodes.png"),
             plot     = log.plot,
             width    = 4,
             height   = 5
