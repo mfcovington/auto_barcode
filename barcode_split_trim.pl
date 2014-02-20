@@ -392,27 +392,15 @@ sub summarize_counts {
 sub plot_summary {
     my ( $barcodes_obs, $barcode_table, $outdir, $expt_id ) = @_;
 
-    my @barcodes;
-    my @counts;
-    my @matches;
-    my $barcodes;
-    for my $barcode (keys $barcodes_obs) {
-        push @barcodes, $barcode;
-        push @counts, $$barcodes_obs{$barcode};
-        my $match = exists $$barcode_table{$barcode} ? "matched" : "unmatched";
-        push @matches, $match;
-    }
-
-    my $barcode_data = join ',', map {qq!"$_"!} @barcodes;
-    my $count_data   = join ',', @counts;
-    my $match_data   = join ',', map {qq!"$_"!} @matches;
+    my ( $barcode_data, $count_data, $match_data )
+        = get_vectors( $barcodes_obs, $barcode_table );
 
     my $R = Statistics::R->new();
 
     $R->run(qq`setwd("$outdir")`);
-    $R->run(qq`log <- data.frame(barcode = c($barcode_data),
-                                 count   = c($count_data),
-                                 matched = c($match_data))`);
+    $R->run(qq`log <- data.frame(barcode = $barcode_data,
+                                 count   = $count_data,
+                                 matched = $match_data)`);
 
     my $plot_fxn = <<EOF;    # Adapted from barcode_plot.R
         barcode_plot <- function(log.df, expt.name) {
@@ -439,4 +427,27 @@ EOF
 
     $R->run($plot_fxn);
     $R->run(qq`barcode_plot(log, "$expt_id")`);
+}
+
+sub get_vectors {
+    my ( $barcodes_obs, $barcode_table ) = @_;
+
+    my @barcodes;
+    my @counts;
+    my @matches;
+    my $barcodes;
+    for my $barcode (keys $barcodes_obs) {
+        push @barcodes, $barcode;
+        push @counts, $$barcodes_obs{$barcode};
+        my $match = exists $$barcode_table{$barcode} ? "matched" : "unmatched";
+        push @matches, $match;
+    }
+
+    my $barcode_data = join ',', map {qq!"$_"!} @barcodes;
+    my $count_data   = join ',', @counts;
+    my $match_data   = join ',', map {qq!"$_"!} @matches;
+
+    $_ = "c($_)" for $barcode_data, $count_data, $match_data;
+
+    return $barcode_data, $count_data, $match_data;
 }
