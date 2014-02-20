@@ -20,6 +20,7 @@ use File::Basename;
 use File::Path 'make_path';
 use List::Util qw(min max);
 use Statistics::Descriptive;
+use Statistics::R;
 use Text::Table;
 
 #TODO:
@@ -81,6 +82,8 @@ summarize_counts(
     $barcode_table, \@fq_files, $total_count,
     $total_matched, $total_unmatched
 );
+
+plot_summary( $barcodes_obs, $barcode_table, $outdir, $expt_id );
 
 exit;
 
@@ -384,4 +387,56 @@ sub summarize_counts {
     $tbl_counts->load(@barcode_counts);
     print $count_log_fh $tbl_counts;
     close $count_log_fh;
+}
+
+sub plot_summary {
+    my ( $barcodes_obs, $barcode_table, $outdir, $expt_id ) = @_;
+
+    my @barcodes;
+    my @counts;
+    my @matches;
+    my $barcodes;
+    for my $barcode (keys $barcodes_obs) {
+        push @barcodes, $barcode;
+        push @counts, $$barcodes_obs{$barcode};
+        my $match = exists $$barcode_table{$barcode} ? "matched" : "unmatched";
+        push @matches, $match;
+    }
+
+    my $barcode_data = join ',', map {qq!"$_"!} @barcodes;
+    my $count_data   = join ',', @counts;
+    my $match_data   = join ',', map {qq!"$_"!} @matches;
+
+    my $R = Statistics::R->new();
+
+    $R->run(qq`setwd("$outdir")`);
+    $R->run(qq`log <- data.frame(barcode = c($barcode_data),
+                                 count   = c($count_data),
+                                 matched = c($match_data))`);
+
+    my $plot_fxn = <<EOF;    # Adapted from barcode_plot.R
+        barcode_plot <- function(log.df, expt.name) {
+          library("ggplot2")
+
+          log.plot <-
+            ggplot(
+              data = log.df,
+              aes(x = factor(matched), y = count / 1000000)) +
+            geom_boxplot(outlier.size = 0) +
+            geom_jitter() +
+            ggtitle(label = expt.name) +
+            xlab(label = "") +
+            scale_y_continuous(name = "Count\n(million reads)")
+
+          ggsave(
+            filename = paste(sep = "", expt.name, ".barcodes.png"),
+            plot     = log.plot,
+            width    = 4,
+            height   = 5
+          )
+        }
+EOF
+
+    $R->run($plot_fxn);
+    $R->run(qq`barcode_plot(log, "$expt_id")`);
 }
