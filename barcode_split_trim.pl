@@ -2,15 +2,11 @@
 # barcode_split_trim.pl
 # Mike Covington (Maloof Lab, UC-Davis)
 # https://github.com/mfcovington/auto_barcode
-# v1.3: 2012-11-09 - adds summary plotting and more fastq validation
-# v1.2: 2012-10-03 - adds option to output stats (w/o creating fastq files)
-# v1.1: 2012-09-25 - improvements to log
-# v1.0: 2012-09-25
-# v0.1: 2012-02-21
 #
 # Description:
 # - Extracts fastq reads for specified barcode(s) from one or multiple FASTQ files
 # - Writes helpful logs with barcode stats
+# - Plots an exquisite summary of matched and unmatched barcodes
 use strict;
 use warnings;
 use autodie;
