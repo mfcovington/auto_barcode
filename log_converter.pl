@@ -3,7 +3,7 @@
 # Mike Covington
 # created: 2012-10-07
 #
-# Description: 
+# Description:
 #
 use strict;
 use warnings;
@@ -22,10 +22,8 @@ while (<$log_fh>) {
     my ( $barcode, $count, $match ) =
       $_   =~ m/ ([ACTGN]+) \s+ ([\d,]+) .+ % \s* ([^\s]*) /ix;
     $count =~ s/,//g;
-    if ( length $match > 0 ) {
-        $match = "matched";
-    }
-    else { $match = "unmatched" }
+    if   ( length $match > 0 ) { $match = "matched" }
+    else                       { $match = "unmatched" }
     say $out_fh join "\t", $barcode, $count, $match;
 }
 close $log_fh;

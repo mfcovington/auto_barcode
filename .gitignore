@@ -1,0 +1,4 @@
+*.fq
+log_barcode*
+*.tsv
+*.png

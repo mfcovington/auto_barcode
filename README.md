@@ -5,6 +5,7 @@ Contents of README:
 - [Usage Summary][usage_summary]
 - [Detailed Usage Example][detailed_example]
     - [Barcode splitting/trimming][split_trim]
+    - [Log files][logs]
     - [Plotting barcode splitting summary][plot]
 
 ## Usage Summary
@@ -21,8 +22,8 @@ The following can be accessed by running `./barcode_split_trim.pl --help`:
     OPTIONS
       -h, --help                 Print this help message
       -v, --version              Print version number
+      -i, --id                   Sample or Experiment ID
       -b, --barcode   BARCODE    Specify barcode or list of barcodes to extract
-      -i, --id        SAMPLE_ID  Sample ID (not needed if using list of barcodes)
       -l, --list                 Indicates --barcode is a list of barcodes in a file
       -n, --notrim               Split without trimming barcodes off
       -st, --stats               Output summary stats only (w/o creating fastq files)
@@ -41,9 +42,11 @@ The following can be accessed by running `./barcode_split_trim.pl --help`:
       The default name of the output file is SAMPLE_ID.fq. The output names can be
       customized using the Naming Options.
 
+      Log files and a summary plot that aid in identification of problem libraries.
+
     EXAMPLES
-      barcode_split_trim.pl -b GACTG -i Charlotte kitten_DNA.fq
-      barcode_split_trim.pl --barcode barcode.file --list *_DNA.fastq
+      barcode_split_trim.pl -i Charlotte -b GACTG kitten_DNA.fq
+      barcode_split_trim.pl -i BigExperiment --barcode barcode.file --list *_DNA.fastq
       barcode_split_trim.pl --help
 
 ## Detailed Usage Example
@@ -73,20 +76,12 @@ To split `sample_files/sequences.fq` with the barcodes in `sample_files/barcode.
 
 ```bash
 ./barcode_split_trim.pl \
+  --id demo \
   --barcode sample_files/barcode.list \
   --list \
   --outdir sample_files/output \
   sample_files/sequences.fq
 ```
-
-<!--
-    # The above snippet is Github's syntax-highlighted version of this:
-    ./barcode_split_trim.pl \
-      --barcode sample_files/barcode.list \
-      --list \
-      --outdir sample_files/output \
-      sample_files/sequences.fq
- -->
 
 This results in a FASTQ file for each barcode (barcodes are trimmed), a single FASTQ file containing all unmatched barcodes (barcodes are left in tact), and two log files:
 
@@ -112,6 +107,11 @@ This results in a FASTQ file for each barcode (barcodes are trimmed), a single F
     # log files
     log_barcode_counts.fq_sequences.bar_barcode.list
     log_barcodes_observed.fq_sequences.bar_barcode.list
+
+    # plot summary
+    demo.barcodes.png
+
+### Log files
 
 The [first log file][LOG1] is the barcode splitting summary (`sample_files/output/log_barcode_counts.fq_sequences.bar_barcode.list`) and returns some basic stats with an emphasis on expected barcodes:
 
@@ -171,28 +171,7 @@ The [second log file][LOG2] returns counts and percentages for all observed barc
 
 ### Plotting barcode splitting summary
 
-The logs are useful, but if there are numerous barcodes and/or experiments being analyzed at once, it can be difficult to easily detect irregularities or problematic barcodes. To solve this problem, we can make a barcode frequency plot using R.
-
-First we extract the [relevant info][LOG2_converted] from the log of observed barcodes:
-
-    ./log_converter.pl sample_files/output/log_barcodes_observed.fq_sequences.bar_barcode.list
-
-Then in R, we define the `barcode_plot` function (found in [`barcode_plot.R`][barcode_plot]) and run the following code:
-
-```R
-setwd("sample_files/output/")
-expt.name <- "demo"
-file.name <- "log_barcodes_observed.fq_sequences.bar_barcode.list.tsv"
-barcode_plot(file.name, expt.name)
-```
-
-<!--
-    # The above snippet is Github's syntax-highlighted version of this:
-    setwd("sample_files/output/")
-    expt.name <- "demo"
-    file.name <- "log_barcodes_observed.fq_sequences.bar_barcode.list.tsv"
-    barcode_plot(file.name, expt.name)
- -->
+The logs are useful, but if there are numerous barcodes and/or experiments being analyzed at once, it can be difficult to easily detect irregularities or problematic barcodes. To solve this issue, we can make a barcode frequency plot using R.
 
 For this plot (saved to `sample_files/output/demo.barcodes.png`), barcodes are split into two groups, those that match an expected barcode and those that are unmatched. Boxplots are then generated using the observed barcode frequencies (which are jitter-plotted individually on top of the boxplot).
 
@@ -203,6 +182,7 @@ For this plot (saved to `sample_files/output/demo.barcodes.png`), barcodes are s
 [usage_summary]: https://github.com/mfcovington/auto_barcode#usage-summary
 [detailed_example]: https://github.com/mfcovington/auto_barcode/#detailed-usage-example
 [split_trim]: https://github.com/mfcovington/auto_barcode/#barcode-splittingtrimming
+[logs]: https://github.com/mfcovington/auto_barcode/#log-files
 [plot]: https://github.com/mfcovington/auto_barcode/#plotting-barcode-splitting-summary
 
 [sample_files_folder]: https://github.com/mfcovington/auto_barcode/tree/master/sample_files
