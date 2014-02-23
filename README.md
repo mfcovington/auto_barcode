@@ -46,7 +46,7 @@ The following can be accessed by running `./barcode_split_trim.pl --help`:
 
     EXAMPLES
       barcode_split_trim.pl -i Charlotte -b GACTG kitten_DNA.fq
-      barcode_split_trim.pl -i BigExperiment --barcode barcode.file --list *_DNA.fastq
+      barcode_split_trim.pl --id BigExperiment --barcode barcode.file --list *_DNA.fastq
       barcode_split_trim.pl --help
 
 ## Detailed Usage Example
