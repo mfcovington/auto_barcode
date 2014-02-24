@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import argparse
+import re
+import sys
 from pprint import pprint as pp
 
 current_version = "v1.4.0"
@@ -8,7 +10,7 @@ def main():
     args = get_options()
     barcode_table = get_barcodes(args.list, args.barcode, args.id)
     # barcode_table = get_barcodes(0,'ACGTG','demo')
-    # barcode_length = validate_barcodes(barcode_table)
+    barcode_length = validate_barcodes(barcode_table)
     # open_fq_fhs_in_bulk()
     # split_trim_barcodes()
     # close_fq_fhs()
@@ -51,6 +53,19 @@ def get_barcodes(list, barcode, id):
     else:
         barcode_table[barcode] = [id, 0]
     return barcode_table
+
+def validate_barcodes(barcode_table):
+    seqs = dict.keys(barcode_table)
+    bad_seq = re.compile('[^ACGT]', re.IGNORECASE)
+    if any(re.match(bad_seq, s) for s in seqs):
+        sys.exit('Invalid barcode found!')
+
+    min_length = len(min(seqs, key=len))
+    max_length = len(max(seqs, key=len))
+    if min_length != max_length:
+        sys.exit("Unexpected variation in barcode length (min={0}, max={1})".format(min_length, max_length))
+    return max_length
+
 
 if __name__ == '__main__':
     main()
