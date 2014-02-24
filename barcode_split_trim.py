@@ -11,9 +11,10 @@ def main():
     barcode_table = get_barcodes(args.list, args.barcode, args.id)
     # barcode_table = get_barcodes(0,'ACGTG','demo')
     barcode_length = validate_barcodes(barcode_table)
-    # open_fq_fhs_in_bulk()
+    open_fq_files(barcode_table)
+    test_write(barcode_table)
     # split_trim_barcodes()
-    # close_fq_fhs()
+    close_fq_files(barcode_table)
     # summarize_observed_barcodes()
     # summarize_counts()
     # plot_summary()
@@ -65,6 +66,18 @@ def validate_barcodes(barcode_table):
     if min_length != max_length:
         sys.exit("Unexpected variation in barcode length (min={0}, max={1})".format(min_length, max_length))
     return max_length
+
+def open_fq_files(barcode_table):
+    for seq in dict.keys(barcode_table):
+        barcode_table[seq]['fh'] = open('temp/{0}'.format(seq), 'w')
+
+def test_write(barcode_table):
+    for seq in dict.keys(barcode_table):
+        barcode_table[seq]['fh'].write('Here is some text for {0}'.format(seq))
+
+def close_fq_files(barcode_table):
+    for seq in dict.keys(barcode_table):
+        barcode_table[seq]['fh'].close()
 
 
 if __name__ == '__main__':
