@@ -4,6 +4,7 @@ import fileinput
 import re
 import os
 import sys
+from collections import Counter
 from pprint import pprint as pp
 
 current_version = "v1.4.0"
@@ -14,7 +15,6 @@ def main():
     # barcode_table = get_barcodes(0,'ACGTG','demo')
     barcode_length = validate_barcodes(barcode_table)
     directory, fq_name, barcode_name, unmatched_fh = open_fq_files(barcode_table, args.fastq, args.outdir, args.prefix, args.suffix, args.autoprefix, args.autosuffix, args.barcode, args.stats)
-    test_write(barcode_table)
     total_matched, total_unmatched, barcodes_obs = split_trim_barcodes(args.fastq, barcode_table, barcode_length, args.notrim, args.stats, unmatched_fh)
     close_fq_files(barcode_table)
     # summarize_observed_barcodes()
@@ -110,14 +110,10 @@ def open_fq_files(barcode_table, fastq, outdir, prefix, suffix, autoprefix, auto
 
     return directory, fq_name, barcode_name, unmatched_fh
 
-def test_write(barcode_table):
-    for seq in dict.keys(barcode_table):
-        barcode_table[seq]['fh'].write('Here is some text for {0}'.format(seq))
-
 def split_trim_barcodes(fastq, barcode_table, barcode_length, notrim, stats, unmatched_fh):
     total_matched = 0
     total_unmatched = 0
-    barcodes_obs = {}
+    barcodes_obs = Counter()
     good_read_id = re.compile('^@')
     fq_data = fileinput.input(fastq)
     for read_id in fq_data:
@@ -131,6 +127,23 @@ def split_trim_barcodes(fastq, barcode_table, barcode_length, notrim, stats, unm
         if not len(seq) == len(qual):
             sys.exit("Encountered unequal sequence and quality lengths for read ({0}) starting on line {1} of FASTQ file: {2}...\nInvalid or corrupt FASTQ file?\n".format(read_id.rstrip('\n'), fq_data.filelineno() - 3, fq_data.filename()))
 
+        cur_barcode = seq[0:5]
+        barcodes_obs[cur_barcode] += 1
+
+        if barcode_table.has_key(cur_barcode):
+            if not notrim:
+                seq = seq[(barcode_length + 1):]
+                qual = qual[(barcode_length + 1):]
+            if not stats:
+                barcode_table[cur_barcode]['fh'].write(read_id + seq + qual_id + qual)
+            barcode_table[cur_barcode]['count'] += 1
+            total_matched += 1
+        else:
+            if not stats:
+                unmatched_fh.write(read_id + seq + qual_id + qual)
+            total_unmatched += 1
+
+    return total_matched, total_unmatched, barcodes_obs
 
 def close_fq_files(barcode_table):
     for seq in dict.keys(barcode_table):
