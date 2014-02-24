@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import re
+import os
 import sys
 from pprint import pprint as pp
 
@@ -11,7 +12,7 @@ def main():
     barcode_table = get_barcodes(args.list, args.barcode, args.id)
     # barcode_table = get_barcodes(0,'ACGTG','demo')
     barcode_length = validate_barcodes(barcode_table)
-    open_fq_files(barcode_table)
+    directory, fq_name, barcode_name, unmatched_fq = open_fq_files(barcode_table, args.fastq, args.outdir, args.prefix, args.suffix, args.autoprefix, args.autosuffix, args.barcode, args.stats)
     test_write(barcode_table)
     # split_trim_barcodes()
     close_fq_files(barcode_table)
@@ -67,9 +68,46 @@ def validate_barcodes(barcode_table):
         sys.exit("Unexpected variation in barcode length (min={0}, max={1})".format(min_length, max_length))
     return max_length
 
-def open_fq_files(barcode_table):
-    for seq in dict.keys(barcode_table):
-        barcode_table[seq]['fh'] = open('temp/{0}'.format(seq), 'w')
+def open_fq_files(barcode_table, fastq, outdir, prefix, suffix, autoprefix, autosuffix, barcode, stats):
+    if outdir:
+        directory = outdir
+        filename = os.path.basename(fastq[0])
+    else:
+        directory, filename = os.path.split(fastq[0])
+
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    if len(fastq) == 1:
+        fq_name, fq_suffix = os.path.splitext(filename)
+    else:
+        fq_name = "multi_fq"
+
+    if not stats:
+        if autoprefix:
+            prefix = fq_name + "."
+        elif prefix:
+            prefix += "."
+        else:
+            prefix = ""
+
+        if suffix:
+            suffix = "." + suffix
+        else:
+            suffix = ""
+
+        barcode_name = os.path.basename(barcode);
+        unmatched_fq = "{0}/unmatched.{1}fq_{2}.bar_{3}{4}.fq".format(directory, prefix, fq_name, barcode_name, suffix)
+        open(unmatched_fq, 'w')
+
+        for seq in dict.keys(barcode_table):
+            if autosuffix:
+                suffix = "." + seq
+            barcode_id = barcode_table[seq]['id']
+            fq_out = "{0}/{1}{2}{3}.fq".format(directory, prefix, barcode_id, suffix)
+            barcode_table[seq]['fh'] = open(fq_out, 'w')
+
+    return directory, fq_name, barcode_name, unmatched_fq;
 
 def test_write(barcode_table):
     for seq in dict.keys(barcode_table):
