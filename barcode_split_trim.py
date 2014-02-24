@@ -4,6 +4,7 @@ import argparse
 import fileinput
 import re
 import os
+import numpy as np
 import sys
 from collections import Counter
 from pprint import pprint as pp
@@ -166,7 +167,47 @@ def summarize_observed_barcodes(barcode_table, barcodes_obs, total_count, direct
         f.write(table)
 
 def summarize_counts(barcode_table, fastq, total_count, total_matched, total_unmatched, directory, fq_name, barcode_name):
-    pass
+    summary = "{0}/log_barcode_counts.fq_{1}.bar_{2}".format(directory, fq_name, barcode_name)
+
+    rows = []
+    for name, count in [('matched', total_matched), ('unmatched', total_unmatched)]:
+        count_fmt = "{:,.0f}".format(count)
+        percent = "{0:.1f}%".format(100 * count / total_count)
+        rows.append([name, count_fmt, percent])
+    table1 = tabulate(rows, tablefmt="plain", stralign="right")
+
+    counts = map(lambda key: barcode_table[key]['count'], barcode_table.keys())
+    min_ct = min(counts)
+    max_ct = max(counts)
+    mean_ct = np.mean(counts)
+    median_ct = np.median(counts)
+    rows = []
+    for name, count in [('min', min_ct), ('max', max_ct), ('mean', mean_ct), ('median', median_ct)]:
+        count_fmt = "{:,.0f}".format(count)
+        percent = "{0:.1f}%".format(100 * count / total_count)
+        rows.append([name, count_fmt, percent])
+    table2 = tabulate(rows, tablefmt="plain", stralign="right")
+
+    rows = []
+    for seq in sorted(barcode_table, key=lambda key: barcode_table[key]['id']):
+        sample = barcode_table[seq]['id']
+        count = barcode_table[seq]['count']
+        count_fmt = "{:,.0f}".format(count)
+        percent = "{0:.1f}%".format(100 * count / total_count)
+        rows.append([sample, seq, count_fmt, percent])
+    table3 = tabulate(rows, headers=["id", "barcode", "count", "percent"], tablefmt="plain", stralign="right")
+
+    with open(summary, 'w') as f:
+        f.write("Barcode splitting summary for:\n")
+        for fq in fastq:
+            f.write("  {0}\n".format(fq))
+        f.write("---------------------------\n")
+        f.write(table1)
+        f.write("\n---------------------------\n")
+        f.write("barcodes    {0}\n".format(len(barcode_table)))
+        f.write(table2)
+        f.write("\n---------------------------\n")
+        f.write(table3)
 
 def plot_summary(barcodes_obs, barcode_table, directory, id):
     pass
