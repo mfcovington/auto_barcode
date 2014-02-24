@@ -97,7 +97,7 @@ def open_fq_files(barcode_table, fastq, outdir, prefix, suffix, autoprefix, auto
         else:
             suffix = ""
 
-        barcode_name = os.path.basename(barcode);
+        barcode_name = os.path.basename(barcode)
         unmatched_fq = "{0}/unmatched.{1}fq_{2}.bar_{3}{4}.fq".format(directory, prefix, fq_name, barcode_name, suffix)
         open(unmatched_fq, 'w')
 
@@ -108,7 +108,7 @@ def open_fq_files(barcode_table, fastq, outdir, prefix, suffix, autoprefix, auto
             fq_out = "{0}/{1}{2}{3}.fq".format(directory, prefix, barcode_id, suffix)
             barcode_table[seq]['fh'] = open(fq_out, 'w')
 
-    return directory, fq_name, barcode_name, unmatched_fq;
+    return directory, fq_name, barcode_name, unmatched_fh
 
 def test_write(barcode_table):
     for seq in dict.keys(barcode_table):
