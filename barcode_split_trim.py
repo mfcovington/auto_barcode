@@ -17,11 +17,10 @@ def main():
 def get_barcodes(list, barcode, id):
     barcode_table = {}
     if list == True:
-        barcode_list = open(barcode, 'r')
-        for line in barcode_list:
-            seq, sample_id = line.split()
-            barcode_table[seq] = {'id': sample_id, 'count': 0}
-        barcode_list.close()
+        with open(barcode, 'r') as barcode_list:
+            for line in barcode_list:
+                seq, sample_id = line.split()
+                barcode_table[seq] = {'id': sample_id, 'count': 0}
     else:
         barcode_table[barcode] = [id, 0]
     return barcode_table
