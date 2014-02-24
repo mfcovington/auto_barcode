@@ -16,7 +16,7 @@ def main():
     barcode_length = validate_barcodes(barcode_table)
     directory, fq_name, barcode_name, unmatched_fh = open_fq_files(barcode_table, args.fastq, args.outdir, args.prefix, args.suffix, args.autoprefix, args.autosuffix, args.barcode, args.stats)
     total_matched, total_unmatched, barcodes_obs = split_trim_barcodes(args.fastq, barcode_table, barcode_length, args.notrim, args.stats, unmatched_fh)
-    close_fq_files(barcode_table)
+    close_fq_files(barcode_table, unmatched_fh)
     # summarize_observed_barcodes()
     # summarize_counts()
     # plot_summary()
@@ -145,7 +145,8 @@ def split_trim_barcodes(fastq, barcode_table, barcode_length, notrim, stats, unm
 
     return total_matched, total_unmatched, barcodes_obs
 
-def close_fq_files(barcode_table):
+def close_fq_files(barcode_table, unmatched_fh):
+    unmatched_fh.close()
     for seq in dict.keys(barcode_table):
         barcode_table[seq]['fh'].close()
 
