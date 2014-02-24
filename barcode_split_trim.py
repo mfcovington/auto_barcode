@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+import fileinput
 import re
 import os
 import sys
@@ -14,7 +15,7 @@ def main():
     barcode_length = validate_barcodes(barcode_table)
     directory, fq_name, barcode_name, unmatched_fq = open_fq_files(barcode_table, args.fastq, args.outdir, args.prefix, args.suffix, args.autoprefix, args.autosuffix, args.barcode, args.stats)
     test_write(barcode_table)
-    # split_trim_barcodes()
+    split_trim_barcodes(args.fastq, barcode_table, barcode_length, args.notrim, args.stats)
     close_fq_files(barcode_table)
     # summarize_observed_barcodes()
     # summarize_counts()
@@ -112,6 +113,24 @@ def open_fq_files(barcode_table, fastq, outdir, prefix, suffix, autoprefix, auto
 def test_write(barcode_table):
     for seq in dict.keys(barcode_table):
         barcode_table[seq]['fh'].write('Here is some text for {0}'.format(seq))
+
+def split_trim_barcodes(fastq, barcode_table, barcode_length, notrim, stats):
+    total_matched = 0
+    total_unmatched = 0
+    barcodes_obs = {}
+    good_read_id = re.compile('^@')
+    fq_data = fileinput.input(fastq)
+    for read_id in fq_data:
+        seq = fq_data.readline()
+        qual_id = fq_data.readline()
+        qual = fq_data.readline()
+
+        if not re.match(good_read_id, read_id):
+            sys.exit("Encountered sequence ID ({0}) that doesn't start with '\@' on line {1} of FASTQ file: {2}...\nInvalid or corrupt FASTQ file?\n".format(read_id.rstrip('\n'), fq_data.filelineno() - 3, fq_data.filename()))
+
+        if not len(seq) == len(qual):
+            sys.exit("Encountered unequal sequence and quality lengths for read ({0}) starting on line {1} of FASTQ file: {2}...\nInvalid or corrupt FASTQ file?\n".format(read_id.rstrip('\n'), fq_data.filelineno() - 3, fq_data.filename()))
+
 
 def close_fq_files(barcode_table):
     for seq in dict.keys(barcode_table):
