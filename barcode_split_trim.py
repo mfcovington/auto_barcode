@@ -17,9 +17,10 @@ def main():
     directory, fq_name, barcode_name, unmatched_fh = open_fq_files(barcode_table, args.fastq, args.outdir, args.prefix, args.suffix, args.autoprefix, args.autosuffix, args.barcode, args.stats)
     total_matched, total_unmatched, barcodes_obs = split_trim_barcodes(args.fastq, barcode_table, barcode_length, args.notrim, args.stats, unmatched_fh)
     close_fq_files(barcode_table, unmatched_fh)
-    # summarize_observed_barcodes()
-    # summarize_counts()
-    # plot_summary()
+    total_count = total_matched + total_unmatched
+    summarize_observed_barcodes(barcode_table, barcodes_obs, total_count, directory, fq_name, barcode_name)
+    summarize_counts(barcode_table, args.fastq, total_count, total_matched, total_unmatched)
+    plot_summary(barcodes_obs, barcode_table, directory, args.id)
     pp(barcode_table)
 
 def get_options():
@@ -150,6 +151,14 @@ def close_fq_files(barcode_table, unmatched_fh):
     for seq in dict.keys(barcode_table):
         barcode_table[seq]['fh'].close()
 
+def summarize_observed_barcodes(barcode_table, barcodes_obs, total_count, directory, fq_name, barcode_name):
+    pass
+
+def summarize_counts(barcode_table, fastq, total_count, total_matched, total_unmatched):
+    pass
+
+def plot_summary(barcodes_obs, barcode_table, directory, id):
+    pass
 
 if __name__ == '__main__':
     main()
