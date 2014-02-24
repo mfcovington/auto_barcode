@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import division
 import argparse
 import fileinput
 import re
@@ -6,6 +7,7 @@ import os
 import sys
 from collections import Counter
 from pprint import pprint as pp
+from tabulate import tabulate
 
 current_version = "v1.4.0"
 
@@ -152,7 +154,16 @@ def close_fq_files(barcode_table, unmatched_fh):
         barcode_table[seq]['fh'].close()
 
 def summarize_observed_barcodes(barcode_table, barcodes_obs, total_count, directory, fq_name, barcode_name):
-    pass
+    rows = []
+    for seq, count in barcodes_obs.most_common():
+        percent = "{0:.1f}%".format(100 * count / total_count)
+        count_fmt = "{:,d}".format(count)
+        sample = barcode_table.get(seq)['id'] if barcode_table.has_key(seq) else ""
+        rows.append([seq, count_fmt, percent, sample])
+    table = tabulate(rows, headers=["barcode", "count", "percent", "id"], tablefmt="plain", stralign="right")
+    summary = "{0}/log_barcodes_observed.fq_{1}.bar_{2}".format(directory, fq_name, barcode_name)
+    with open(summary, 'w') as f:
+        f.write(table)
 
 def summarize_counts(barcode_table, fastq, total_count, total_matched, total_unmatched):
     pass
