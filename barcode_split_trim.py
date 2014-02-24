@@ -21,7 +21,7 @@ def main():
     close_fq_files(barcode_table, unmatched_fh)
     total_count = total_matched + total_unmatched
     summarize_observed_barcodes(barcode_table, barcodes_obs, total_count, directory, fq_name, barcode_name)
-    summarize_counts(barcode_table, args.fastq, total_count, total_matched, total_unmatched)
+    summarize_counts(barcode_table, args.fastq, total_count, total_matched, total_unmatched, directory, fq_name, barcode_name)
     plot_summary(barcodes_obs, barcode_table, directory, args.id)
     pp(barcode_table)
 
@@ -165,7 +165,7 @@ def summarize_observed_barcodes(barcode_table, barcodes_obs, total_count, direct
     with open(summary, 'w') as f:
         f.write(table)
 
-def summarize_counts(barcode_table, fastq, total_count, total_matched, total_unmatched):
+def summarize_counts(barcode_table, fastq, total_count, total_matched, total_unmatched, directory, fq_name, barcode_name):
     pass
 
 def plot_summary(barcodes_obs, barcode_table, directory, id):
