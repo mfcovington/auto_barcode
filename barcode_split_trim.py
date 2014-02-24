@@ -13,9 +13,9 @@ def main():
     barcode_table = get_barcodes(args.list, args.barcode, args.id)
     # barcode_table = get_barcodes(0,'ACGTG','demo')
     barcode_length = validate_barcodes(barcode_table)
-    directory, fq_name, barcode_name, unmatched_fq = open_fq_files(barcode_table, args.fastq, args.outdir, args.prefix, args.suffix, args.autoprefix, args.autosuffix, args.barcode, args.stats)
+    directory, fq_name, barcode_name, unmatched_fh = open_fq_files(barcode_table, args.fastq, args.outdir, args.prefix, args.suffix, args.autoprefix, args.autosuffix, args.barcode, args.stats)
     test_write(barcode_table)
-    split_trim_barcodes(args.fastq, barcode_table, barcode_length, args.notrim, args.stats)
+    total_matched, total_unmatched, barcodes_obs = split_trim_barcodes(args.fastq, barcode_table, barcode_length, args.notrim, args.stats, unmatched_fh)
     close_fq_files(barcode_table)
     # summarize_observed_barcodes()
     # summarize_counts()
@@ -99,7 +99,7 @@ def open_fq_files(barcode_table, fastq, outdir, prefix, suffix, autoprefix, auto
 
         barcode_name = os.path.basename(barcode)
         unmatched_fq = "{0}/unmatched.{1}fq_{2}.bar_{3}{4}.fq".format(directory, prefix, fq_name, barcode_name, suffix)
-        open(unmatched_fq, 'w')
+        unmatched_fh = open(unmatched_fq, 'w')
 
         for seq in dict.keys(barcode_table):
             if autosuffix:
@@ -114,7 +114,7 @@ def test_write(barcode_table):
     for seq in dict.keys(barcode_table):
         barcode_table[seq]['fh'].write('Here is some text for {0}'.format(seq))
 
-def split_trim_barcodes(fastq, barcode_table, barcode_length, notrim, stats):
+def split_trim_barcodes(fastq, barcode_table, barcode_length, notrim, stats, unmatched_fh):
     total_matched = 0
     total_unmatched = 0
     barcodes_obs = {}
