@@ -157,8 +157,8 @@ def close_fq_files(barcode_table, unmatched_fh):
 def summarize_observed_barcodes(barcode_table, barcodes_obs, total_count, directory, fq_name, barcode_name):
     rows = []
     for seq, count in barcodes_obs.most_common():
+        count_fmt = "{:,.0f}".format(count)
         percent = "{0:.1f}%".format(100 * count / total_count)
-        count_fmt = "{:,d}".format(count)
         sample = barcode_table.get(seq)['id'] if barcode_table.has_key(seq) else ""
         rows.append([seq, count_fmt, percent, sample])
     table = tabulate(rows, headers=["barcode", "count", "percent", "id"], tablefmt="plain", stralign="right")
