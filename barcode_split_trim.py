@@ -12,6 +12,12 @@ from tabulate import tabulate
 
 current_version = "v1.4.0"
 
+# Just a quick usage example:
+# ./barcode_split_trim.py --id demo --list -b sample_files/barcode.list --out demo-output sample_files/sequences.fq
+
+# TODO: Integrate ggplot functionality
+# TODO: Reformat per python standards
+
 def main():
     args = get_options()
     barcode_table = get_barcodes(args.list, args.barcode, args.id)
