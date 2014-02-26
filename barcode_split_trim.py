@@ -173,20 +173,16 @@ def summarize_observed_barcodes(barcode_table, barcodes_obs, total_count, direct
 def summarize_counts(barcode_table, fastq, total_count, total_matched, total_unmatched, directory, fq_name, barcode_name):
     summary = "{0}/log_barcode_counts.fq_{1}.bar_{2}".format(directory, fq_name, barcode_name)
 
-    rows = []
-    for name, count in [('matched', total_matched), ('unmatched', total_unmatched)]:
-        rows.append([name, commify(count), percent(count, total_count)])
-    table1 = tabulate(rows, tablefmt="plain", stralign="right")
+    data = [('matched', total_matched), ('unmatched', total_unmatched)]
+    table1 = table_id_num_pct(data, total_count)
 
     counts = map(lambda key: barcode_table[key]['count'], barcode_table.keys())
     min_ct = min(counts)
     max_ct = max(counts)
     mean_ct = np.mean(counts)
     median_ct = np.median(counts)
-    rows = []
-    for name, count in [('min', min_ct), ('max', max_ct), ('mean', mean_ct), ('median', median_ct)]:
-        rows.append([name, commify(count), percent(count, total_count)])
-    table2 = tabulate(rows, tablefmt="plain", stralign="right")
+    data = [('min', min_ct), ('max', max_ct), ('mean', mean_ct), ('median', median_ct)]
+    table2 = table_id_num_pct(data, total_count)
 
     rows = []
     for seq in sorted(barcode_table, key=lambda key: barcode_table[key]['id']):
@@ -206,6 +202,12 @@ def summarize_counts(barcode_table, fastq, total_count, total_matched, total_unm
         f.write(table2)
         f.write("\n---------------------------\n")
         f.write(table3)
+
+def table_id_num_pct(data, total_count):
+    rows = []
+    for name, count in data:
+        rows.append([name, commify(count), percent(count, total_count)])
+    return tabulate(rows, tablefmt="plain", stralign="right")
 
 def plot_summary(barcodes_obs, barcode_table, directory, id):
     pass
