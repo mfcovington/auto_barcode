@@ -7,7 +7,7 @@ import os
 import numpy as np
 import sys
 from collections import Counter
-from pprint import pprint as pp
+# from pprint import pprint as pp
 from tabulate import tabulate
 
 current_version = "v1.4.0"
@@ -30,7 +30,7 @@ def main():
     summarize_observed_barcodes(barcode_table, barcodes_obs, total_count, directory, fq_name, barcode_name)
     summarize_counts(barcode_table, args.fastq, total_count, total_matched, total_unmatched, directory, fq_name, barcode_name)
     plot_summary(barcodes_obs, barcode_table, directory, args.id)
-    pp(barcode_table)
+    # pp(barcode_table)
 
 def get_options():
     description = "Extracts fastq reads for specified barcode(s) from one or multiple FASTQ files."
