@@ -163,9 +163,8 @@ def close_fq_files(barcode_table, unmatched_fh):
 def summarize_observed_barcodes(barcode_table, barcodes_obs, total_count, directory, fq_name, barcode_name):
     rows = []
     for seq, count in barcodes_obs.most_common():
-        count_fmt = "{:,.0f}".format(count)
         sample = barcode_table.get(seq)['id'] if barcode_table.has_key(seq) else ""
-        rows.append([seq, count_fmt, percent(count, total_count), sample])
+        rows.append([seq, commify(count), percent(count, total_count), sample])
     table = tabulate(rows, headers=["barcode", "count", "percent", "id"], tablefmt="plain", stralign="right")
     summary = "{0}/log_barcodes_observed.fq_{1}.bar_{2}".format(directory, fq_name, barcode_name)
     with open(summary, 'w') as f:
@@ -176,8 +175,7 @@ def summarize_counts(barcode_table, fastq, total_count, total_matched, total_unm
 
     rows = []
     for name, count in [('matched', total_matched), ('unmatched', total_unmatched)]:
-        count_fmt = "{:,.0f}".format(count)
-        rows.append([name, count_fmt, percent(count, total_count)])
+        rows.append([name, commify(count), percent(count, total_count)])
     table1 = tabulate(rows, tablefmt="plain", stralign="right")
 
     counts = map(lambda key: barcode_table[key]['count'], barcode_table.keys())
@@ -187,16 +185,14 @@ def summarize_counts(barcode_table, fastq, total_count, total_matched, total_unm
     median_ct = np.median(counts)
     rows = []
     for name, count in [('min', min_ct), ('max', max_ct), ('mean', mean_ct), ('median', median_ct)]:
-        count_fmt = "{:,.0f}".format(count)
-        rows.append([name, count_fmt, percent(count, total_count)])
+        rows.append([name, commify(count), percent(count, total_count)])
     table2 = tabulate(rows, tablefmt="plain", stralign="right")
 
     rows = []
     for seq in sorted(barcode_table, key=lambda key: barcode_table[key]['id']):
         sample = barcode_table[seq]['id']
         count = barcode_table[seq]['count']
-        count_fmt = "{:,.0f}".format(count)
-        rows.append([sample, seq, count_fmt, percent(count, total_count)])
+        rows.append([sample, seq, commify(count), percent(count, total_count)])
     table3 = tabulate(rows, headers=["id", "barcode", "count", "percent"], tablefmt="plain", stralign="right")
 
     with open(summary, 'w') as f:
@@ -218,6 +214,9 @@ def percent(numerator, denominator, decimal_places=1):
     if denominator == 0:
         sys.exit("Oops, I divided by zero.")
     return "{0:.{1}f}%".format(100 * numerator / denominator, decimal_places)
+
+def commify(number, decimal_places=0):
+    return "{0:,.{1}f}".format(number, decimal_places)
 
 if __name__ == '__main__':
     main()
