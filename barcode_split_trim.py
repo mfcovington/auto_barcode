@@ -214,10 +214,10 @@ def summarize_counts(barcode_table, fastq, total_count, total_matched, total_unm
 def plot_summary(barcodes_obs, barcode_table, directory, id):
     pass
 
-def percent(numerator, denominator):
+def percent(numerator, denominator, decimal_places=1):
     if denominator == 0:
         sys.exit("Oops, I divided by zero.")
-    return "{0:.1f}%".format(100 * numerator / denominator)
+    return "{0:.{1}f}%".format(100 * numerator / denominator, decimal_places)
 
 if __name__ == '__main__':
     main()
