@@ -177,11 +177,8 @@ def summarize_counts(barcode_table, fastq, total_count, total_matched, total_unm
     table1 = table_id_num_pct(data, total_count)
 
     counts = map(lambda key: barcode_table[key]['count'], barcode_table.keys())
-    min_ct = min(counts)
-    max_ct = max(counts)
-    mean_ct = np.mean(counts)
-    median_ct = np.median(counts)
-    data = [('min', min_ct), ('max', max_ct), ('mean', mean_ct), ('median', median_ct)]
+    data = [('min', min(counts)), ('max', max(counts)),
+            ('mean', np.mean(counts)), ('median', np.median(counts))]
     table2 = table_id_num_pct(data, total_count)
 
     rows = []
