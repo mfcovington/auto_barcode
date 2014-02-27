@@ -16,7 +16,7 @@ from tabulate import tabulate
 grdevices = importr('grDevices')
 pandas2ri.activate()
 
-current_version = "v1.4.0"
+current_version = "v1.5.0"
 
 # Just a quick usage example:
 # ./barcode_split_trim.py --id demo --list -b sample_files/barcode.list --out demo-output sample_files/sequences.fq
