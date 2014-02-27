@@ -54,9 +54,8 @@ my $barcode_table = get_barcodes( $list, $barcode, $id );
 my $barcode_length = validate_barcodes($barcode_table);
 
 my ( $directory, $filename, $unmatched_fh, $barcode_name )
-    = open_fq_fhs_in_bulk( $barcode_table, \@fq_files, $outdir,
-                           $prefix,        $suffix,    $autoprefix,
-                           $autosuffix,    $barcode,   $stats );
+    = open_fq_fhs( $barcode_table, \@fq_files,  $outdir,  $prefix, $suffix,
+                   $autoprefix,    $autosuffix, $barcode, $stats );
 
 my ( $total_matched, $total_unmatched, $barcodes_obs )
     = split_trim_barcodes( \@fq_files, $barcode_table, $barcode_length,
@@ -192,7 +191,7 @@ sub validate_barcodes {
     return $barcode_length;
 }
 
-sub open_fq_fhs_in_bulk {
+sub open_fq_fhs {
     my ($barcode_table, $fq_files, $outdir,
         $prefix,        $suffix,   $autoprefix,
         $autosuffix,    $barcode,  $stats
