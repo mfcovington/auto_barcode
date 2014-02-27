@@ -130,9 +130,9 @@ OPTIONS
   -h, --help                 Print this help message
   -v, --version              Print version number
   -i, --id                   Sample or Experiment ID
-  -b, --barcode   BARCODE    Specify barcode or list of barcodes to extract
-  -l, --list                 Indicates --barcode is a list of barcodes in a file
-  -n, --notrim               Split without trimming barcodes off
+  -b, --barcode   BARCODE    Specify barcode or file w/ list of barcodes to extract
+  -l, --list                 Indicate BARCODE is a list of barcodes in a file
+  -n, --notrim               Split without trimming barcodes
   -st, --stats               Output summary stats only (w/o creating fastq files)
   -o, --outdir    DIR        Output file is saved in the specified directory
                               (or same directory as IN.FASTQ, if --outdir is not used)
@@ -146,7 +146,7 @@ NAMING OPTIONS
 OUTPUT
   An output file in fastq format is written for each barcode to the directory
   containing IN.FASTQ, unless an output directory is specified.
-  The default name of the output file is SAMPLE_ID.fq. The output names can be
+  The default name of the output file is ID.fq. The output names can be
   customized using the Naming Options.
 
 EXAMPLES
