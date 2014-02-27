@@ -59,7 +59,7 @@ my ( $directory, $filename, $unmatched_fh, $barcode_name )
 
 my ( $total_matched, $total_unmatched, $barcodes_obs )
     = split_trim_barcodes( \@fq_files, $barcode_table, $barcode_length,
-                           $notrim,    $stats );
+                           $unmatched_fh, $notrim, $stats );
 
 close_fq_fhs( $barcode_table, $stats );
 
@@ -72,7 +72,7 @@ summarize_observed_barcodes(
 
 summarize_counts(
     $barcode_table, \@fq_files, $total_count,
-    $total_matched, $total_unmatched
+    $total_matched, $total_unmatched, $directory, $filename, $barcode_name
 );
 
 plot_summary( $barcodes_obs, $barcode_table, $outdir, $id );
@@ -234,7 +234,9 @@ sub open_fq_fhs {
 }
 
 sub split_trim_barcodes {
-    my ( $fq_files, $barcode_table, $barcode_length, $notrim, $stats ) = @_;
+    my ( $fq_files, $barcode_table, $barcode_length, $unmatched_fh, $notrim,
+        $stats )
+        = @_;
 
     #split and trim
     my $total_matched   = 0;
@@ -314,7 +316,9 @@ sub summarize_observed_barcodes {
 }
 
 sub summarize_counts {
-    my ( $barcode_table, $fq_files, $total_count, $total_matched, $total_unmatched ) = @_;
+    my ( $barcode_table, $fq_files, $total_count, $total_matched,
+        $total_unmatched, $directory, $filename, $barcode_name )
+        = @_;
 
     #counts summary
     my @barcode_counts =
