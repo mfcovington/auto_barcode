@@ -23,7 +23,7 @@ use Text::Table;
 # incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
 # fuzzy matching
 
-my $current_version = "v1.4.0";
+my $current_version = "v1.5.0";
 
 #options/defaults
 my ($barcode, $id,         $list,       $outdir, $notrim,
