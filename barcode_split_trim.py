@@ -8,7 +8,6 @@ import numpy as np
 import sys
 from collections import Counter
 from pandas import DataFrame
-# from pprint import pprint as pp
 from rpy2 import robjects
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.lib import ggplot2
@@ -23,11 +22,11 @@ current_version = "v1.4.0"
 # ./barcode_split_trim.py --id demo --list -b sample_files/barcode.list --out demo-output sample_files/sequences.fq
 
 # TODO: Reformat per python standards
+# TODO: Add NoPlot option (and put imports in the plot function?)
 
 def main():
     args = get_options()
     barcode_table = get_barcodes(args.list, args.barcode, args.id)
-    # barcode_table = get_barcodes(0,'ACGTG','demo')
     barcode_length = validate_barcodes(barcode_table)
     directory, fq_name, barcode_name, unmatched_fh = open_fq_files(barcode_table, args.fastq, args.outdir, args.prefix, args.suffix, args.autoprefix, args.autosuffix, args.barcode, args.stats)
     total_matched, total_unmatched, barcodes_obs = split_trim_barcodes(args.fastq, barcode_table, barcode_length, args.notrim, args.stats, unmatched_fh)
@@ -36,7 +35,6 @@ def main():
     summarize_observed_barcodes(barcode_table, barcodes_obs, total_count, directory, fq_name, barcode_name)
     summarize_counts(barcode_table, args.fastq, total_count, total_matched, total_unmatched, directory, fq_name, barcode_name)
     plot_summary(barcodes_obs, barcode_table, directory, args.id)
-    # pp(barcode_table)
 
 def get_options():
     description = "Extracts fastq reads for specified barcode(s) from one or multiple FASTQ files."
