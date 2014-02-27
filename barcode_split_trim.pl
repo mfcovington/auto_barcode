@@ -179,14 +179,15 @@ sub get_barcodes {
 sub validate_barcodes {
     my $barcode_table = shift;
 
-    my $min_length = min map { length } keys $barcode_table;
-    my $max_length = max map { length } keys $barcode_table;
+    my @barcodes   = keys $barcode_table;
+    my $min_length = min map {length} @barcodes;
+    my $max_length = max map {length} @barcodes;
     die
       "Unexpected variation in barcode length (min=$min_length, max=$max_length)\n"
       unless $min_length == $max_length;
     my $barcode_length = $max_length;
     map { die "Invalid barcode found: $_\n" unless /^[ACGT]{$barcode_length}$/i }
-      keys $barcode_table;
+      @barcodes;
 
     return $barcode_length;
 }
