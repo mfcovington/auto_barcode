@@ -7,15 +7,21 @@ import os
 import numpy as np
 import sys
 from collections import Counter
+from pandas import DataFrame
 # from pprint import pprint as pp
+from rpy2 import robjects
+from rpy2.robjects import pandas2ri
+from rpy2.robjects.lib import ggplot2
+from rpy2.robjects.packages import importr
 from tabulate import tabulate
+grdevices = importr('grDevices')
+pandas2ri.activate()
 
 current_version = "v1.4.0"
 
 # Just a quick usage example:
 # ./barcode_split_trim.py --id demo --list -b sample_files/barcode.list --out demo-output sample_files/sequences.fq
 
-# TODO: Integrate ggplot functionality
 # TODO: Reformat per python standards
 
 def main():
@@ -206,8 +212,23 @@ def table_id_num_pct(data, total_count):
         rows.append([name, commify(count), percent(count, total_count)])
     return tabulate(rows, tablefmt="plain", stralign="right")
 
-def plot_summary(barcodes_obs, barcode_table, directory, id):
-    pass
+def plot_summary(barcodes_obs, barcode_table, directory, expt_id):
+    barcodes, counts, matches = get_vectors(barcodes_obs, barcode_table)
+    df = DataFrame({'barcode': barcodes,
+                    'count': counts,
+                    'matched': matches})
+    p = ggplot2.ggplot(df) + \
+        ggplot2.aes_string(x='factor(matched)', y='count / 1000000') + \
+        ggplot2.geom_boxplot(outlier_size = 0) + \
+        ggplot2.geom_jitter() + \
+        ggplot2.ggtitle(label = expt_id) + \
+        ggplot2.ggplot2.xlab(label = "") + \
+        ggplot2.scale_y_continuous(name = "Count\n(million reads)")
+
+    filename = "{0}/{1}.png".format(directory, expt_id)
+    grdevices.png(filename=filename, width=4, height=5, unit='in', res=300)
+    p.plot()
+    grdevices.dev_off()
 
 def get_vectors(barcodes_obs, barcode_table):
     barcodes = []
@@ -218,19 +239,7 @@ def get_vectors(barcodes_obs, barcode_table):
         counts.append(barcodes_obs[barcode])
         match = "matched" if barcode_table.get(barcode) else "unmatched"
         matches.append(match)
-
-    barcode_data = char_vector(barcodes)
-    count_data = int_vector(counts)
-    match_data = char_vector(matches)
-    return barcode_data, count_data, match_data
-
-def char_vector(data):
-    csv = ",".join('"{0}"'.format(item) for item in data)
-    return "c({0})".format(csv)
-
-def int_vector(data):
-    csv = ",".join(map(str, data))
-    return "c({0})".format(csv)
+    return barcodes, counts, matches
 
 def percent(numerator, denominator, decimal_places=1):
     if denominator == 0:
