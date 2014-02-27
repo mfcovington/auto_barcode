@@ -209,6 +209,29 @@ def table_id_num_pct(data, total_count):
 def plot_summary(barcodes_obs, barcode_table, directory, id):
     pass
 
+def get_vectors(barcodes_obs, barcode_table):
+    barcodes = []
+    counts = []
+    matches = []
+    for barcode in dict.keys(barcodes_obs):
+        barcodes.append(barcode)
+        counts.append(barcodes_obs[barcode])
+        match = "matched" if barcode_table.get(barcode) else "unmatched"
+        matches.append(match)
+
+    barcode_data = char_vector(barcodes)
+    count_data = int_vector(counts)
+    match_data = char_vector(matches)
+    return barcode_data, count_data, match_data
+
+def char_vector(data):
+    csv = ",".join('"{0}"'.format(item) for item in data)
+    return "c({0})".format(csv)
+
+def int_vector(data):
+    csv = ",".join(map(str, data))
+    return "c({0})".format(csv)
+
 def percent(numerator, denominator, decimal_places=1):
     if denominator == 0:
         sys.exit("Oops, I divided by zero.")
