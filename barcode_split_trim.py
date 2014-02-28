@@ -23,14 +23,20 @@ current_version = "v1.5.0"
 
 # TODO: Reformat per python standards
 # TODO: Add NoPlot option (and put imports in the plot function?)
+# TODO: Have auto-pre/suffix append to, rather than overwrite pre/suffix
 
 def main():
     args = get_options()
     barcode_table = get_barcodes(args.list, args.barcode, args.id)
     barcode_length = validate_barcodes(barcode_table)
-    directory, fq_name, barcode_name, unmatched_fh = open_fq_files(barcode_table, args.fastq, args.outdir, args.prefix, args.suffix, args.autoprefix, args.autosuffix, args.barcode, args.stats)
+    directory, fq_name, barcode_name = parse_filenames(args.fastq, args.outdir, args.barcode)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    if not args.stats:
+        unmatched_fh = open_fq_files(barcode_table, directory, fq_name, barcode_name, args.prefix, args.suffix, args.autoprefix, args.autosuffix)
     total_matched, total_unmatched, barcodes_obs = split_trim_barcodes(args.fastq, barcode_table, barcode_length, args.notrim, args.stats, unmatched_fh)
-    close_fq_files(barcode_table, unmatched_fh)
+    if not args.stats:
+        close_fq_files(barcode_table, unmatched_fh)
     total_count = total_matched + total_unmatched
     summarize_observed_barcodes(barcode_table, barcodes_obs, total_count, directory, fq_name, barcode_name)
     summarize_counts(barcode_table, args.fastq, total_count, total_matched, total_unmatched, directory, fq_name, barcode_name)
@@ -83,63 +89,57 @@ def validate_barcodes(barcode_table):
         sys.exit("Unexpected variation in barcode length (min={0}, max={1})".format(min_length, max_length))
     return max_length
 
-def open_fq_files(barcode_table, fastq, outdir, prefix, suffix, autoprefix, autosuffix, barcode, stats):
+def parse_filenames(fastq, outdir, barcode):
     if outdir:
         directory = outdir
         filename = os.path.basename(fastq[0])
     else:
         directory, filename = os.path.split(fastq[0])
 
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
     if len(fastq) == 1:
         fq_name, fq_suffix = os.path.splitext(filename)
     else:
         fq_name = "multi_fq"
 
-    if not stats:
-        if autoprefix:
-            prefix = fq_name + "."
-        elif prefix:
-            prefix += "."
-        else:
-            prefix = ""
+    barcode_name = os.path.basename(barcode)
+    return directory, fq_name, barcode_name
 
-        if suffix:
-            suffix = "." + suffix
-        else:
-            suffix = ""
+def open_fq_files(barcode_table, directory, fq_name, barcode_name, prefix, suffix, autoprefix, autosuffix):
+    if autoprefix:
+        prefix = fq_name + "."
+    elif prefix:
+        prefix += "."
+    else:
+        prefix = ""
 
-        barcode_name = os.path.basename(barcode)
-        unmatched_fq = "{0}/unmatched.{1}fq_{2}.bar_{3}{4}.fq".format(directory, prefix, fq_name, barcode_name, suffix)
-        unmatched_fh = open(unmatched_fq, 'w')
+    if suffix:
+        suffix = "." + suffix
+    else:
+        suffix = ""
 
-        for seq in dict.keys(barcode_table):
-            if autosuffix:
-                suffix = "." + seq
-            barcode_id = barcode_table[seq]['id']
-            fq_out = "{0}/{1}{2}{3}.fq".format(directory, prefix, barcode_id, suffix)
-            barcode_table[seq]['fh'] = open(fq_out, 'w')
+    unmatched_fq = "{0}/unmatched.{1}fq_{2}.bar_{3}{4}.fq".format(directory, prefix, fq_name, barcode_name, suffix)
+    unmatched_fh = open(unmatched_fq, 'w')
 
-    return directory, fq_name, barcode_name, unmatched_fh
+    for seq in dict.keys(barcode_table):
+        if autosuffix:
+            suffix = "." + seq
+        barcode_id = barcode_table[seq]['id']
+        fq_out = "{0}/{1}{2}{3}.fq".format(directory, prefix, barcode_id, suffix)
+        barcode_table[seq]['fh'] = open(fq_out, 'w')
+
+    return unmatched_fh
 
 def split_trim_barcodes(fastq, barcode_table, barcode_length, notrim, stats, unmatched_fh):
     total_matched = 0
     total_unmatched = 0
     barcodes_obs = Counter()
-    good_read_id = re.compile('^@')
     fq_data = fileinput.input(fastq)
     for read_id in fq_data:
+        line_no = fq_data.filelineno()
         seq = fq_data.readline()
         qual_id = fq_data.readline()
         qual = fq_data.readline()
-
-        if not re.match(good_read_id, read_id):
-            sys.exit("Encountered sequence ID ({0}) that doesn't start with '\@' on line {1} of FASTQ file: {2}...\nInvalid or corrupt FASTQ file?\n".format(read_id.rstrip('\n'), fq_data.filelineno() - 3, fq_data.filename()))
-
-        if not len(seq) == len(qual):
-            sys.exit("Encountered unequal sequence and quality lengths for read ({0}) starting on line {1} of FASTQ file: {2}...\nInvalid or corrupt FASTQ file?\n".format(read_id.rstrip('\n'), fq_data.filelineno() - 3, fq_data.filename()))
+        validate_fq_read(read_id, seq, qual, fq_data, line_no)
 
         cur_barcode = seq[0:5]
         barcodes_obs[cur_barcode] += 1
@@ -158,6 +158,18 @@ def split_trim_barcodes(fastq, barcode_table, barcode_length, notrim, stats, unm
             total_unmatched += 1
 
     return total_matched, total_unmatched, barcodes_obs
+
+def validate_fq_read(read_id, seq, qual, fq_data, line_no):
+    read_id = read_id.rstrip('\n')
+    fq_file = fq_data.filename()
+    good_read_id = re.compile('^@')
+    if not re.match(good_read_id, read_id):
+        sys.exit("Encountered sequence ID ({0}) that doesn't start with '\@' on line {1} of FASTQ file: '{2}'...\nInvalid or corrupt FASTQ file?\n".format(read_id, line_no, fq_file))
+    if not len(seq) == len(qual):
+        sys.exit("Encountered unequal sequence and quality lengths for read ({0}) starting on line {1} of FASTQ file: '{2}'...\nInvalid or corrupt FASTQ file?\n".format(read_id, line_no, fq_file))
+    good_seq = re.compile('^[ACGTN]+$', re.IGNORECASE)
+    if not re.match(good_seq, seq):
+        sys.exit("Encountered sequence ({0}) containing non-nucleotide characters. See read ({1}) starting on line {2} of FASTQ file: '{3}'...\nInvalid or corrupt FASTQ file?\n".format(seq.rstrip('\n'), read_id, line_no, fq_file))
 
 def close_fq_files(barcode_table, unmatched_fh):
     unmatched_fh.close()

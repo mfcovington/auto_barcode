@@ -19,9 +19,9 @@ use Statistics::Descriptive;
 use Statistics::R;
 use Text::Table;
 
-#TODO:
-# incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
-# fuzzy matching
+# TODO: incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
+# TODO: fuzzy matching
+# TODO: Change 'matched/unmatched' to 'expected/unexpected'
 
 my $current_version = "v1.5.0";
 
@@ -53,16 +53,20 @@ my $barcode_table = get_barcodes( $list, $barcode, $id );
 
 my $barcode_length = validate_barcodes($barcode_table);
 
-my ( $directory, $filename, $unmatched_fh, $barcode_name )
-    = open_fq_fhs_in_bulk( $barcode_table, \@fq_files, $outdir,
-                           $prefix,        $suffix,    $autoprefix,
-                           $autosuffix,    $barcode,   $stats );
+my ( $directory, $filename, $barcode_name )
+    = parse_filenames( \@fq_files, $outdir, $barcode );
+
+make_path($directory);
+
+my $unmatched_fh
+    = open_fq_fhs( $barcode_table, $directory, $filename, $barcode_name,
+                   $prefix, $suffix, $autoprefix, $autosuffix ) unless $stats;
 
 my ( $total_matched, $total_unmatched, $barcodes_obs )
     = split_trim_barcodes( \@fq_files, $barcode_table, $barcode_length,
-                           $notrim,    $stats );
+                           $unmatched_fh, $notrim, $stats );
 
-close_fq_fhs( $barcode_table, $stats );
+close_fq_fhs( $barcode_table, $unmatched_fh ) unless $stats;
 
 my $total_count = $total_matched + $total_unmatched;
 
@@ -73,7 +77,7 @@ summarize_observed_barcodes(
 
 summarize_counts(
     $barcode_table, \@fq_files, $total_count,
-    $total_matched, $total_unmatched
+    $total_matched, $total_unmatched, $directory, $filename, $barcode_name
 );
 
 plot_summary( $barcodes_obs, $barcode_table, $outdir, $id );
@@ -131,9 +135,9 @@ OPTIONS
   -h, --help                 Print this help message
   -v, --version              Print version number
   -i, --id                   Sample or Experiment ID
-  -b, --barcode   BARCODE    Specify barcode or list of barcodes to extract
-  -l, --list                 Indicates --barcode is a list of barcodes in a file
-  -n, --notrim               Split without trimming barcodes off
+  -b, --barcode   BARCODE    Specify barcode or file w/ list of barcodes to extract
+  -l, --list                 Indicate BARCODE is a list of barcodes in a file
+  -n, --notrim               Split without trimming barcodes
   -st, --stats               Output summary stats only (w/o creating fastq files)
   -o, --outdir    DIR        Output file is saved in the specified directory
                               (or same directory as IN.FASTQ, if --outdir is not used)
@@ -147,7 +151,7 @@ NAMING OPTIONS
 OUTPUT
   An output file in fastq format is written for each barcode to the directory
   containing IN.FASTQ, unless an output directory is specified.
-  The default name of the output file is SAMPLE_ID.fq. The output names can be
+  The default name of the output file is ID.fq. The output names can be
   customized using the Naming Options.
 
 EXAMPLES
@@ -180,34 +184,38 @@ sub get_barcodes {
 sub validate_barcodes {
     my $barcode_table = shift;
 
-    my $min_length = min map { length } keys $barcode_table;
-    my $max_length = max map { length } keys $barcode_table;
+    my @barcodes   = keys $barcode_table;
+    my $min_length = min map {length} @barcodes;
+    my $max_length = max map {length} @barcodes;
     die
       "Unexpected variation in barcode length (min=$min_length, max=$max_length)\n"
       unless $min_length == $max_length;
     my $barcode_length = $max_length;
     map { die "Invalid barcode found: $_\n" unless /^[ACGT]{$barcode_length}$/i }
-      keys $barcode_table;
+      @barcodes;
 
     return $barcode_length;
 }
 
-sub open_fq_fhs_in_bulk {
-    my ($barcode_table, $fq_files, $outdir,
-        $prefix,        $suffix,   $autoprefix,
-        $autosuffix,    $barcode,  $stats
-    ) = @_;
+sub parse_filenames {
+    my ( $fq_files, $outdir, $barcode ) = @_;
 
-    #open all fastq output filehandles
     my ( $filename, $directory, $filesuffix )
         = fileparse( $$fq_files[0], ".f(ast)?q" );
     $filename  = "multi_fq"    if @$fq_files > 1;
     $directory = $outdir . "/" if defined $outdir;
-    make_path($directory);
+    my $barcode_name = fileparse($barcode);
+
+    return $directory, $filename, $barcode_name;
+}
+
+sub open_fq_fhs {
+    my ( $barcode_table, $directory, $filename, $barcode_name, $prefix, $suffix, $autoprefix, $autosuffix ) = @_;
+
     $prefix .= "." unless $prefix eq "";
     $suffix = "." . $suffix unless $suffix eq "";
     $prefix = join ".", $filename, $prefix if $autoprefix;
-    my $barcode_name = fileparse($barcode);
+
     my $unmatched_fq_out
         = $directory
         . "unmatched."
@@ -215,48 +223,42 @@ sub open_fq_fhs_in_bulk {
         . $filename . ".bar_"
         . $barcode_name
         . $suffix . ".fq";
-    open my $unmatched_fh, ">", $unmatched_fq_out unless $stats;
+    open my $unmatched_fh, ">", $unmatched_fq_out;
 
-    unless ($stats) {
-        for ( keys $barcode_table ) {
-            my $temp_suffix = $suffix;
-            $temp_suffix = join ".", $suffix, $_ if $autosuffix;
-            my $fq_out
-                = $directory
-                . $prefix
-                . $$barcode_table{$_}->{id}
-                . $temp_suffix . ".fq";
-            open $$barcode_table{$_}->{fh}, ">", $fq_out;
-        }
+    for ( keys $barcode_table ) {
+        my $temp_suffix = $suffix;
+        $temp_suffix = join ".", $suffix, $_ if $autosuffix;
+        my $fq_out
+            = $directory
+            . $prefix
+            . $$barcode_table{$_}->{id}
+            . $temp_suffix . ".fq";
+        open $$barcode_table{$_}->{fh}, ">", $fq_out;
     }
 
-    return $directory, $filename, $unmatched_fh, $barcode_name;
+    return $unmatched_fh;
 }
 
 sub split_trim_barcodes {
-    my ( $fq_files, $barcode_table, $barcode_length, $notrim, $stats ) = @_;
+    my ( $fq_files, $barcode_table, $barcode_length, $unmatched_fh, $notrim,
+        $stats )
+        = @_;
 
-    #split and trim
     my $total_matched   = 0;
     my $total_unmatched = 0;
     my %barcodes_obs;
     for my $fq_in (@$fq_files) {
         open my $fq_in_fh, "<", $fq_in;
         while ( my $read_id = <$fq_in_fh> ) {
+            my $line_no = $.;
             my $seq     = <$fq_in_fh>;
             my $qual_id = <$fq_in_fh>;
             my $qual    = <$fq_in_fh>;
-
-            die
-              "Encountered sequence ID ($read_id) that doesn't start with '\@' on line $. of FASTQ file: $fq_in...\nInvalid or corrupt FASTQ file?\n"
-              unless $read_id =~ /^@/;
-            die
-              "Encountered read ($read_id) with unequal sequence and quality lengths near line $. of FASTQ file: $fq_in...\nInvalid or corrupt FASTQ file?\n"
-              unless length $seq == length $qual;
+            validate_fq_read( $read_id, $seq, $qual, $fq_in, $line_no);
 
             my $cur_barcode = substr $seq, 0, $barcode_length;
             $barcodes_obs{$cur_barcode}++;
-            if ( /^$cur_barcode/i ~~ %$barcode_table ) {
+            if ( exists $$barcode_table{$cur_barcode} ) {
                 $seq  = substr $seq, $barcode_length + 1 unless $notrim;
                 $qual = substr $qual, $barcode_length + 1 unless $notrim;
                 print { $$barcode_table{$cur_barcode}->{fh} }
@@ -276,19 +278,29 @@ sub split_trim_barcodes {
     return $total_matched, $total_unmatched, \%barcodes_obs;
 }
 
-sub close_fq_fhs {
-    my ( $barcode_table, $stats ) = @_;
+sub validate_fq_read {
+    my ( $read_id, $seq, $qual, $fq_in, $line_no ) = @_;
 
-    unless ($stats) {
-        map { close $$barcode_table{$_}->{fh} } keys $barcode_table;
-        close $unmatched_fh;
-    }
+    die chomp $read_id
+        && "Encountered sequence ID ($read_id) that doesn't start with '\@' on line $line_no of FASTQ file: '$fq_in'...\nInvalid or corrupt FASTQ file?\n"
+        unless $read_id =~ /^@/;
+    die chomp $read_id
+        && "Encountered unequal sequence and quality lengths for read ($read_id) near line $line_no of FASTQ file: '$fq_in'...\nInvalid or corrupt FASTQ file?\n"
+        unless length $seq == length $qual;
+    die chomp $read_id && chomp $seq && "Encountered sequence ($seq) containing non-nucleotide characters. See read ($read_id) starting on line $line_no of FASTQ file: '$fq_in'...\nInvalid or corrupt FASTQ file?\n"
+        unless $seq =~ /^[ACGTN]+$/i;
+}
+
+sub close_fq_fhs {
+    my ( $barcode_table, $unmatched_fh ) = @_;
+
+    map { close $$barcode_table{$_}->{fh} } keys $barcode_table;
+    close $unmatched_fh;
 }
 
 sub summarize_observed_barcodes {
     my ( $barcode_table, $barcodes_obs, $total_count, $directory, $filename, $barcode_name ) = @_;
 
-    #observed barcodes summary
     my @sorted_barcodes_obs
         = map {
         [   $_->[0],
@@ -314,9 +326,10 @@ sub summarize_observed_barcodes {
 }
 
 sub summarize_counts {
-    my ( $barcode_table, $fq_files, $total_count, $total_matched, $total_unmatched ) = @_;
+    my ( $barcode_table, $fq_files, $total_count, $total_matched,
+        $total_unmatched, $directory, $filename, $barcode_name )
+        = @_;
 
-    #counts summary
     my @barcode_counts =
       sort { $a->[0] cmp $b->[0] }
       map { [ $$barcode_table{$_}->{id}, $_, commify( $$barcode_table{$_}->{count} ), percent( $$barcode_table{$_}->{count} / $total_count ) ] }
@@ -402,7 +415,6 @@ sub get_vectors {
     my @barcodes;
     my @counts;
     my @matches;
-    my $barcodes;
     for my $barcode (keys $barcodes_obs) {
         push @barcodes, $barcode;
         push @counts, $$barcodes_obs{$barcode};
