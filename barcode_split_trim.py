@@ -28,9 +28,14 @@ def main():
     args = get_options()
     barcode_table = get_barcodes(args.list, args.barcode, args.id)
     barcode_length = validate_barcodes(barcode_table)
-    directory, fq_name, barcode_name, unmatched_fh = open_fq_files(barcode_table, args.fastq, args.outdir, args.prefix, args.suffix, args.autoprefix, args.autosuffix, args.barcode, args.stats)
+    directory, fq_name, barcode_name = parse_filenames(args.fastq, args.outdir, args.barcode)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    if not args.stats:
+        unmatched_fh = open_fq_files(barcode_table, directory, fq_name, barcode_name, args.prefix, args.suffix, args.autoprefix, args.autosuffix)
     total_matched, total_unmatched, barcodes_obs = split_trim_barcodes(args.fastq, barcode_table, barcode_length, args.notrim, args.stats, unmatched_fh)
-    close_fq_files(barcode_table, unmatched_fh)
+    if not args.stats:
+        close_fq_files(barcode_table, unmatched_fh)
     total_count = total_matched + total_unmatched
     summarize_observed_barcodes(barcode_table, barcodes_obs, total_count, directory, fq_name, barcode_name)
     summarize_counts(barcode_table, args.fastq, total_count, total_matched, total_unmatched, directory, fq_name, barcode_name)
@@ -83,46 +88,45 @@ def validate_barcodes(barcode_table):
         sys.exit("Unexpected variation in barcode length (min={0}, max={1})".format(min_length, max_length))
     return max_length
 
-def open_fq_files(barcode_table, fastq, outdir, prefix, suffix, autoprefix, autosuffix, barcode, stats):
+def parse_filenames(fastq, outdir, barcode):
     if outdir:
         directory = outdir
         filename = os.path.basename(fastq[0])
     else:
         directory, filename = os.path.split(fastq[0])
 
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
     if len(fastq) == 1:
         fq_name, fq_suffix = os.path.splitext(filename)
     else:
         fq_name = "multi_fq"
 
-    if not stats:
-        if autoprefix:
-            prefix = fq_name + "."
-        elif prefix:
-            prefix += "."
-        else:
-            prefix = ""
+    barcode_name = os.path.basename(barcode)
+    return directory, fq_name, barcode_name
 
-        if suffix:
-            suffix = "." + suffix
-        else:
-            suffix = ""
+def open_fq_files(barcode_table, directory, fq_name, barcode_name, prefix, suffix, autoprefix, autosuffix):
+    if autoprefix:
+        prefix = fq_name + "."
+    elif prefix:
+        prefix += "."
+    else:
+        prefix = ""
 
-        barcode_name = os.path.basename(barcode)
-        unmatched_fq = "{0}/unmatched.{1}fq_{2}.bar_{3}{4}.fq".format(directory, prefix, fq_name, barcode_name, suffix)
-        unmatched_fh = open(unmatched_fq, 'w')
+    if suffix:
+        suffix = "." + suffix
+    else:
+        suffix = ""
 
-        for seq in dict.keys(barcode_table):
-            if autosuffix:
-                suffix = "." + seq
-            barcode_id = barcode_table[seq]['id']
-            fq_out = "{0}/{1}{2}{3}.fq".format(directory, prefix, barcode_id, suffix)
-            barcode_table[seq]['fh'] = open(fq_out, 'w')
+    unmatched_fq = "{0}/unmatched.{1}fq_{2}.bar_{3}{4}.fq".format(directory, prefix, fq_name, barcode_name, suffix)
+    unmatched_fh = open(unmatched_fq, 'w')
 
-    return directory, fq_name, barcode_name, unmatched_fh
+    for seq in dict.keys(barcode_table):
+        if autosuffix:
+            suffix = "." + seq
+        barcode_id = barcode_table[seq]['id']
+        fq_out = "{0}/{1}{2}{3}.fq".format(directory, prefix, barcode_id, suffix)
+        barcode_table[seq]['fh'] = open(fq_out, 'w')
+
+    return unmatched_fh
 
 def split_trim_barcodes(fastq, barcode_table, barcode_length, notrim, stats, unmatched_fh):
     total_matched = 0
