@@ -258,7 +258,7 @@ sub split_trim_barcodes {
 
             my $cur_barcode = substr $seq, 0, $barcode_length;
             $barcodes_obs{$cur_barcode}++;
-            if ( /^$cur_barcode/i ~~ %$barcode_table ) {
+            if ( exists $$barcode_table{$cur_barcode} ) {
                 $seq  = substr $seq, $barcode_length + 1 unless $notrim;
                 $qual = substr $qual, $barcode_length + 1 unless $notrim;
                 print { $$barcode_table{$cur_barcode}->{fh} }
