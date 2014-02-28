@@ -415,7 +415,6 @@ sub get_vectors {
     my @barcodes;
     my @counts;
     my @matches;
-    my $barcodes;
     for my $barcode (keys $barcodes_obs) {
         push @barcodes, $barcode;
         push @counts, $$barcodes_obs{$barcode};
