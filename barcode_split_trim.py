@@ -132,18 +132,13 @@ def split_trim_barcodes(fastq, barcode_table, barcode_length, notrim, stats, unm
     total_matched = 0
     total_unmatched = 0
     barcodes_obs = Counter()
-    good_read_id = re.compile('^@')
     fq_data = fileinput.input(fastq)
     for read_id in fq_data:
+        line_no = fq_data.filelineno()
         seq = fq_data.readline()
         qual_id = fq_data.readline()
         qual = fq_data.readline()
-
-        if not re.match(good_read_id, read_id):
-            sys.exit("Encountered sequence ID ({0}) that doesn't start with '\@' on line {1} of FASTQ file: {2}...\nInvalid or corrupt FASTQ file?\n".format(read_id.rstrip('\n'), fq_data.filelineno() - 3, fq_data.filename()))
-
-        if not len(seq) == len(qual):
-            sys.exit("Encountered unequal sequence and quality lengths for read ({0}) starting on line {1} of FASTQ file: {2}...\nInvalid or corrupt FASTQ file?\n".format(read_id.rstrip('\n'), fq_data.filelineno() - 3, fq_data.filename()))
+        validate_fq_read(read_id, seq, qual, fq_data, line_no)
 
         cur_barcode = seq[0:5]
         barcodes_obs[cur_barcode] += 1
@@ -162,6 +157,18 @@ def split_trim_barcodes(fastq, barcode_table, barcode_length, notrim, stats, unm
             total_unmatched += 1
 
     return total_matched, total_unmatched, barcodes_obs
+
+def validate_fq_read(read_id, seq, qual, fq_data, line_no):
+    read_id = read_id.rstrip('\n')
+    fq_file = fq_data.filename()
+    good_read_id = re.compile('^@')
+    if not re.match(good_read_id, read_id):
+        sys.exit("Encountered sequence ID ({0}) that doesn't start with '\@' on line {1} of FASTQ file: '{2}'...\nInvalid or corrupt FASTQ file?\n".format(read_id, line_no, fq_file))
+    if not len(seq) == len(qual):
+        sys.exit("Encountered unequal sequence and quality lengths for read ({0}) starting on line {1} of FASTQ file: '{2}'...\nInvalid or corrupt FASTQ file?\n".format(read_id, line_no, fq_file))
+    good_seq = re.compile('^[ACGTN]+$', re.IGNORECASE)
+    if not re.match(good_seq, seq):
+        sys.exit("Encountered sequence ({0}) containing non-nucleotide characters. See read ({1}) starting on line {2} of FASTQ file: '{3}'...\nInvalid or corrupt FASTQ file?\n".format(seq.rstrip('\n'), read_id, line_no, fq_file))
 
 def close_fq_files(barcode_table, unmatched_fh):
     unmatched_fh.close()

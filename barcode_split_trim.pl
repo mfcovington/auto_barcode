@@ -250,16 +250,11 @@ sub split_trim_barcodes {
     for my $fq_in (@$fq_files) {
         open my $fq_in_fh, "<", $fq_in;
         while ( my $read_id = <$fq_in_fh> ) {
+            my $line_no = $.;
             my $seq     = <$fq_in_fh>;
             my $qual_id = <$fq_in_fh>;
             my $qual    = <$fq_in_fh>;
-
-            die
-              "Encountered sequence ID ($read_id) that doesn't start with '\@' on line $. of FASTQ file: $fq_in...\nInvalid or corrupt FASTQ file?\n"
-              unless $read_id =~ /^@/;
-            die
-              "Encountered read ($read_id) with unequal sequence and quality lengths near line $. of FASTQ file: $fq_in...\nInvalid or corrupt FASTQ file?\n"
-              unless length $seq == length $qual;
+            validate_fq_read( $read_id, $seq, $qual, $fq_in, $line_no);
 
             my $cur_barcode = substr $seq, 0, $barcode_length;
             $barcodes_obs{$cur_barcode}++;
@@ -281,6 +276,19 @@ sub split_trim_barcodes {
     }
 
     return $total_matched, $total_unmatched, \%barcodes_obs;
+}
+
+sub validate_fq_read {
+    my ( $read_id, $seq, $qual, $fq_in, $line_no ) = @_;
+
+    die chomp $read_id
+        && "Encountered sequence ID ($read_id) that doesn't start with '\@' on line $line_no of FASTQ file: '$fq_in'...\nInvalid or corrupt FASTQ file?\n"
+        unless $read_id =~ /^@/;
+    die chomp $read_id
+        && "Encountered unequal sequence and quality lengths for read ($read_id) near line $line_no of FASTQ file: '$fq_in'...\nInvalid or corrupt FASTQ file?\n"
+        unless length $seq == length $qual;
+    die chomp $read_id && chomp $seq && "Encountered sequence ($seq) containing non-nucleotide characters. See read ($read_id) starting on line $line_no of FASTQ file: '$fq_in'...\nInvalid or corrupt FASTQ file?\n"
+        unless $seq =~ /^[ACGTN]+$/i;
 }
 
 sub close_fq_fhs {
