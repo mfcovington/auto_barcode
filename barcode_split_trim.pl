@@ -198,7 +198,6 @@ sub open_fq_fhs {
         $autosuffix,    $barcode,  $stats
     ) = @_;
 
-    #open all fastq output filehandles
     my ( $filename, $directory, $filesuffix )
         = fileparse( $$fq_files[0], ".f(ast)?q" );
     $filename  = "multi_fq"    if @$fq_files > 1;
@@ -238,7 +237,6 @@ sub split_trim_barcodes {
         $stats )
         = @_;
 
-    #split and trim
     my $total_matched   = 0;
     my $total_unmatched = 0;
     my %barcodes_obs;
@@ -290,7 +288,6 @@ sub close_fq_fhs {
 sub summarize_observed_barcodes {
     my ( $barcode_table, $barcodes_obs, $total_count, $directory, $filename, $barcode_name ) = @_;
 
-    #observed barcodes summary
     my @sorted_barcodes_obs
         = map {
         [   $_->[0],
@@ -320,7 +317,6 @@ sub summarize_counts {
         $total_unmatched, $directory, $filename, $barcode_name )
         = @_;
 
-    #counts summary
     my @barcode_counts =
       sort { $a->[0] cmp $b->[0] }
       map { [ $$barcode_table{$_}->{id}, $_, commify( $$barcode_table{$_}->{count} ), percent( $$barcode_table{$_}->{count} / $total_count ) ] }
