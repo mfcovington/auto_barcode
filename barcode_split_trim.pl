@@ -19,9 +19,9 @@ use Statistics::Descriptive;
 use Statistics::R;
 use Text::Table;
 
-#TODO:
-# incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
-# fuzzy matching
+# TODO: incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
+# TODO: fuzzy matching
+# TODO: Change 'matched/unmatched' to 'expected/unexpected'
 
 my $current_version = "v1.5.0";
 

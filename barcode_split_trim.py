@@ -23,6 +23,7 @@ current_version = "v1.5.0"
 
 # TODO: Reformat per python standards
 # TODO: Add NoPlot option (and put imports in the plot function?)
+# TODO: Have auto-pre/suffix append to, rather than overwrite pre/suffix
 
 def main():
     args = get_options()
