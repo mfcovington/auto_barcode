@@ -349,7 +349,7 @@ sub summarize_observed_barcodes {
             $_->[2]->{id},
         ]
         }
-        sort { $b->[1] <=> $a->[1] }
+        sort { $b->[1] <=> $a->[1] or $a->[0] cmp $b->[0] }
         map { [ $_, $$barcodes_obs{$_}, $$barcode_table{$_} ] }
         keys $barcodes_obs;
     open my $bar_log_fh, ">", $directory . join ".", "log_barcodes_observed",
