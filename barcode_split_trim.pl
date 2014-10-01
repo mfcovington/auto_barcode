@@ -84,7 +84,7 @@ summarize_counts(
     $total_matched, $total_unmatched, $directory, $filename, $barcode_name
 );
 
-plot_summary( $barcodes_obs, $barcode_table, $outdir, $id );
+plot_summary( $barcodes_obs, $barcode_table, $directory, $id );
 
 exit;
 
@@ -431,14 +431,14 @@ sub summarize_counts {
 }
 
 sub plot_summary {
-    my ( $barcodes_obs, $barcode_table, $outdir, $id ) = @_;
+    my ( $barcodes_obs, $barcode_table, $directory, $id ) = @_;
 
     my ( $barcode_data, $count_data, $match_data )
         = get_vectors( $barcodes_obs, $barcode_table );
 
     my $R = Statistics::R->new();
 
-    $R->run(qq`setwd("$outdir")`);
+    $R->run(qq`setwd("$directory")`);
     $R->run(qq`log <- data.frame(barcode = $barcode_data,
                                  count   = $count_data,
                                  matched = $match_data)`);
