@@ -193,7 +193,7 @@ sub get_barcodes {
 sub validate_barcodes {
     my $barcode_table = shift;
 
-    my @barcodes   = keys $barcode_table;
+    my @barcodes   = keys %{$barcode_table};
     my $min_length = min map {length} @barcodes;
     my $max_length = max map {length} @barcodes;
     die
@@ -234,7 +234,7 @@ sub open_fq_fhs {
         . $suffix . ".fq";
     open my $unmatched_fh, ">", $unmatched_fq_out;
 
-    for ( keys $barcode_table ) {
+    for ( keys %{$barcode_table} ) {
         my $temp_suffix = $suffix;
         $temp_suffix = join ".", $suffix, $_ if $autosuffix;
         my $fq_out
@@ -334,7 +334,7 @@ sub fuzzy_match {
 sub close_fq_fhs {
     my ( $barcode_table, $unmatched_fh ) = @_;
 
-    map { close $$barcode_table{$_}->{fh} } keys $barcode_table;
+    map { close $$barcode_table{$_}->{fh} } keys %{$barcode_table};
     close $unmatched_fh;
 }
 
@@ -351,7 +351,7 @@ sub summarize_observed_barcodes {
         }
         sort { $b->[1] <=> $a->[1] or $a->[0] cmp $b->[0] }
         map { [ $_, $$barcodes_obs{$_}, $$barcode_table{$_} ] }
-        keys $barcodes_obs;
+        keys %{$barcodes_obs};
     open my $bar_log_fh, ">", $directory . join ".", "log_barcodes_observed",
         "fq_" . $filename, "bar_" . $barcode_name;
     my $tbl_observed = Text::Table->new(
@@ -373,7 +373,7 @@ sub summarize_counts {
     my @barcode_counts =
       sort { $a->[0] cmp $b->[0] }
       map { [ $$barcode_table{$_}->{id}, $_, commify( $$barcode_table{$_}->{count} ), percent( $$barcode_table{$_}->{count} / $total_count ) ] }
-      keys $barcode_table;
+      keys %{$barcode_table};
 
     open my $count_log_fh, ">", $directory . join ".", "log_barcode_counts", "fq_" . $filename, "bar_" . $barcode_name;
     say $count_log_fh "Barcode splitting summary for:";
@@ -403,7 +403,7 @@ sub summarize_counts {
     say $count_log_fh "-" x ( $max_fq_length + 2 );
 
     my $stat = Statistics::Descriptive::Full->new();
-    $stat->add_data( map{ $$barcode_table{$_}->{count} } keys $barcode_table );
+    $stat->add_data( map{ $$barcode_table{$_}->{count} } keys %{$barcode_table} );
     my $tbl_stats = Text::Table->new(
         "",
         "\n&num",
@@ -455,7 +455,7 @@ sub get_vectors {
     my @barcodes;
     my @counts;
     my @matches;
-    for my $barcode (keys $barcodes_obs) {
+    for my $barcode ( keys %{$barcodes_obs} ) {
         push @barcodes, $barcode;
         push @counts, $$barcodes_obs{$barcode};
         my $match = exists $$barcode_table{$barcode} ? "matched" : "unmatched";
