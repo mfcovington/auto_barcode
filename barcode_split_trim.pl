@@ -17,6 +17,7 @@ use File::Path 'make_path';
 use List::Util qw(min max);
 use Statistics::Descriptive;
 use Statistics::R;
+use Text::Levenshtein::XS 'distance';
 use Text::Table;
 
 # TODO: incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
@@ -26,28 +27,31 @@ use Text::Table;
 my $current_version = "v1.5.0";
 
 #options/defaults
+my $mismatches_ok = 0;
 my ($barcode, $id,         $list,       $outdir, $notrim,
     $stats,   $autoprefix, $autosuffix, $help,   $version
 );
 my $prefix  = "";
 my $suffix  = "";
 my $options = GetOptions(
-    "barcode=s"  => \$barcode,
-    "id=s"       => \$id,
-    "list"       => \$list,
-    "outdir=s"   => \$outdir,
-    "autoprefix" => \$autoprefix,
-    "prefix=s"   => \$prefix,
-    "suffix=s"   => \$suffix,
-    "autosuffix" => \$autosuffix,
-    "notrim"     => \$notrim,
-    "stats"      => \$stats,
-    "help"       => \$help,
-    "version"    => \$version,
+    "barcode=s"    => \$barcode,
+    "id=s"         => \$id,
+    "list"         => \$list,
+    "mismatches=s" => \$mismatches_ok,
+    "outdir=s"     => \$outdir,
+    "autoprefix"   => \$autoprefix,
+    "prefix=s"     => \$prefix,
+    "suffix=s"     => \$suffix,
+    "autosuffix"   => \$autosuffix,
+    "notrim"       => \$notrim,
+    "stats"        => \$stats,
+    "help"         => \$help,
+    "version"      => \$version,
 );
 my @fq_files = grep { /f(ast)?q$/i } @ARGV;
 
-validate_options( $version, $help, $barcode, $id, $list, \@fq_files );
+validate_options( $version, $help, $barcode, $id, $list, $mismatches_ok,
+    \@fq_files );
 
 my $barcode_table = get_barcodes( $list, $barcode, $id );
 
@@ -101,7 +105,8 @@ sub commify {
 }
 
 sub validate_options {
-    my ( $version, $help, $barcode, $id, $list, $fq_files ) = @_;
+    my ( $version, $help, $barcode, $id, $list, $mismatches_ok, $fq_files )
+        = @_;
 
     die "$current_version\n" if $version;
 
@@ -114,6 +119,9 @@ sub validate_options {
     print_usage()
       and die "ERROR: Missing Sample/Experiment ID ('--id').\n"
       unless defined $id;
+    print_usage()
+      and die "ERROR: Allowed number of mismatched ('--mismatches') must be a positive integer.\n"
+      unless $mismatches_ok =~ /^\d+$/;
     print_usage()
       and die "ERROR: Missing path to FASTQ file(s).\n"
       unless scalar $fq_files > 0;
@@ -137,6 +145,7 @@ OPTIONS
   -i, --id                   Sample or Experiment ID
   -b, --barcode   BARCODE    Specify barcode or file w/ list of barcodes to extract
   -l, --list                 Indicate BARCODE is a list of barcodes in a file
+  -m, --mismatches           Minimum number of mismatches allowed in barcode sequence [0]
   -n, --notrim               Split without trimming barcodes
   -st, --stats               Output summary stats only (w/o creating fastq files)
   -o, --outdir    DIR        Output file is saved in the specified directory
@@ -257,8 +266,14 @@ sub split_trim_barcodes {
             validate_fq_read( $read_id, $seq, $qual, $fq_in, $line_no);
 
             my $cur_barcode = substr $seq, 0, $barcode_length;
+            my $has_match = exists $$barcode_table{$cur_barcode} ? 1 : 0;
+
+            ( $cur_barcode, $has_match )
+                = fuzzy_match( $cur_barcode, $barcode_table, $mismatches_ok )
+                if !$has_match && $mismatches_ok;
+
             $barcodes_obs{$cur_barcode}++;
-            if ( exists $$barcode_table{$cur_barcode} ) {
+            if ($has_match) {
                 $seq  = substr $seq, $barcode_length + 1 unless $notrim;
                 $qual = substr $qual, $barcode_length + 1 unless $notrim;
                 print { $$barcode_table{$cur_barcode}->{fh} }
@@ -289,6 +304,31 @@ sub validate_fq_read {
         unless length $seq == length $qual;
     die chomp $read_id && chomp $seq && "Encountered sequence ($seq) containing non-nucleotide characters. See read ($read_id) starting on line $line_no of FASTQ file: '$fq_in'...\nInvalid or corrupt FASTQ file?\n"
         unless $seq =~ /^[ACGTN]+$/i;
+}
+
+sub fuzzy_match {
+    my ( $cur_barcode, $barcode_table, $mismatches_ok ) = @_;
+
+    my %edit_distances;
+    push @{ $edit_distances{ distance( $cur_barcode, $_ ) } }, $_
+        for keys %{$barcode_table};
+
+    my $best_score       = min keys %edit_distances;
+    my $best_score_count = scalar @{ $edit_distances{$best_score} };
+
+    my $fuzzy_barcode;
+    my $fuzzy_match;
+
+    if ( $best_score <= $mismatches_ok && $best_score_count == 1 ) {
+        ($fuzzy_barcode) = @{ $edit_distances{$best_score} };
+        $fuzzy_match = 1;
+    }
+    else {
+        $fuzzy_barcode = $cur_barcode;
+        $fuzzy_match   = 0;
+    }
+
+    return $fuzzy_barcode, $fuzzy_match;
 }
 
 sub close_fq_fhs {
