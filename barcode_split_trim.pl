@@ -56,7 +56,7 @@ my ( $fq_files, $fq_indexes )
     = $indexed ? part { my $i++ % 2 } @all_fq_files : \@all_fq_files;
 
 validate_options( $version, $help, $barcode, $id, $list, $mismatches_ok,
-    $fq_files, $fq_indexes );
+    $fq_files, $fq_indexes, $indexed );
 
 my $barcode_table = get_barcodes( $list, $barcode, $id );
 
@@ -131,10 +131,10 @@ sub validate_options {
       unless $mismatches_ok =~ /^\d+$/;
     print_usage()
       and die "ERROR: Missing path to FASTQ file(s).\n"
-      unless scalar $fq_files > 0;
+      unless scalar @$fq_files > 0;
     print_usage()
-      and die "ERROR: Number of FASTQ files must equal number of index files.\n"
-      if $indexed && scalar $fq_files != scalar $fq_indexes;
+      and die "ERROR: Number of FASTQ files must equal number of index files when using '--indexed'.\n"
+      if $indexed && scalar @$fq_files != scalar @$fq_indexes;
 }
 
 sub print_usage {
