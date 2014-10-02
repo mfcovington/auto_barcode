@@ -14,6 +14,7 @@ use feature 'say';
 use Getopt::Long;
 use File::Basename;
 use File::Path 'make_path';
+use List::MoreUtils 'part';
 use List::Util qw(min max);
 use Statistics::Descriptive;
 use Statistics::R;
@@ -28,8 +29,9 @@ my $current_version = "v1.5.0";
 
 #options/defaults
 my $mismatches_ok = 0;
-my ($barcode, $id,         $list,       $outdir, $notrim,
-    $stats,   $autoprefix, $autosuffix, $help,   $version
+my ($barcode,     $id,     $list,  $outdir,
+    $indexed, $notrim, $stats, $autoprefix,
+    $autosuffix,  $help,   $version
 );
 my $prefix  = "";
 my $suffix  = "";
@@ -39,6 +41,7 @@ my $options = GetOptions(
     "list"         => \$list,
     "mismatches=s" => \$mismatches_ok,
     "outdir=s"     => \$outdir,
+    "indexed"      => \$indexed,
     "autoprefix"   => \$autoprefix,
     "prefix=s"     => \$prefix,
     "suffix=s"     => \$suffix,
@@ -48,17 +51,19 @@ my $options = GetOptions(
     "help"         => \$help,
     "version"      => \$version,
 );
-my @fq_files = grep { /f(ast)?q$/i } @ARGV;
+my @all_fq_files = grep { /f(ast)?q$/i } @ARGV;
+my ( $fq_files, $fq_indexes )
+    = $indexed ? part { my $i++ % 2 } @all_fq_files : \@all_fq_files;
 
 validate_options( $version, $help, $barcode, $id, $list, $mismatches_ok,
-    \@fq_files );
+    $fq_files, $fq_indexes );
 
 my $barcode_table = get_barcodes( $list, $barcode, $id );
 
 my $barcode_length = validate_barcodes($barcode_table);
 
 my ( $directory, $filename, $barcode_name )
-    = parse_filenames( \@fq_files, $outdir, $barcode );
+    = parse_filenames( $fq_files, $outdir, $barcode );
 
 make_path($directory);
 
@@ -67,8 +72,8 @@ my $unmatched_fh
                    $prefix, $suffix, $autoprefix, $autosuffix ) unless $stats;
 
 my ( $total_matched, $total_unmatched, $barcodes_obs )
-    = split_trim_barcodes( \@fq_files, $barcode_table, $barcode_length,
-                           $unmatched_fh, $notrim, $stats );
+    = split_trim_barcodes( $fq_files, $fq_indexes, $indexed,
+    $barcode_table, $barcode_length, $unmatched_fh, $notrim, $stats );
 
 close_fq_fhs( $barcode_table, $unmatched_fh ) unless $stats;
 
@@ -80,7 +85,7 @@ summarize_observed_barcodes(
 );
 
 summarize_counts(
-    $barcode_table, \@fq_files, $total_count,
+    $barcode_table, $fq_files, $total_count,
     $total_matched, $total_unmatched, $directory, $filename, $barcode_name
 );
 
@@ -249,8 +254,8 @@ sub open_fq_fhs {
 }
 
 sub split_trim_barcodes {
-    my ( $fq_files, $barcode_table, $barcode_length, $unmatched_fh, $notrim,
-        $stats )
+    my ( $fq_files, $fq_indexes, $indexed, $barcode_table, $barcode_length,
+        $unmatched_fh, $notrim, $stats )
         = @_;
 
     my $total_matched   = 0;
