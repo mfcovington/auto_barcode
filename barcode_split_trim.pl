@@ -110,8 +110,10 @@ sub commify {
 }
 
 sub validate_options {
-    my ( $version, $help, $barcode, $id, $list, $mismatches_ok, $fq_files )
-        = @_;
+    my ($version,  $help,       $barcode,
+        $id,       $list,       $mismatches_ok,
+        $fq_files, $fq_indexes, $indexed
+    ) = @_;
 
     die "$current_version\n" if $version;
 
@@ -130,6 +132,9 @@ sub validate_options {
     print_usage()
       and die "ERROR: Missing path to FASTQ file(s).\n"
       unless scalar $fq_files > 0;
+    print_usage()
+      and die "ERROR: Number of FASTQ files must equal number of index files.\n"
+      if $indexed && scalar $fq_files != scalar $fq_indexes;
 }
 
 sub print_usage {
