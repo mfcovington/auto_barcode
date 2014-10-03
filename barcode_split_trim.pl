@@ -266,8 +266,16 @@ sub split_trim_barcodes {
     my $total_matched   = 0;
     my $total_unmatched = 0;
     my %barcodes_obs;
-    for my $fq_in (@$fq_files) {
-        open my $fq_in_fh, "<", $fq_in;
+
+    for my $i ( 0 .. $#$fq_files ) {
+
+        my $fq_in     = $$fq_files[$i];
+        # my $fq_idx_in = $$fq_files[$i] if $indexed;
+        my $fq_idx_in = $$fq_indexes[$i] if $indexed;
+
+        open my $fq_in_fh,     "<", $fq_in;
+        open my $fq_idx_in_fh, "<", $fq_idx_in if $indexed;
+
         while ( my $read_id = <$fq_in_fh> ) {
             my $line_no = $.;
             my $seq     = <$fq_in_fh>;
@@ -276,6 +284,22 @@ sub split_trim_barcodes {
             validate_fq_read( $read_id, $seq, $qual, $fq_in, $line_no);
 
             my $cur_barcode = substr $seq, 0, $barcode_length;
+
+            if ($indexed) {
+                my $idx_read_id = <$fq_idx_in_fh>;
+                my $idx_line_no = $.;
+                my $idx_seq     = <$fq_idx_in_fh>;
+                my $idx_qual_id = <$fq_idx_in_fh>;
+                my $idx_qual    = <$fq_idx_in_fh>;
+                validate_fq_read(
+                    $idx_read_id, $idx_seq, $idx_qual,
+                    $fq_idx_in,   $idx_line_no
+                );
+
+                chomp $idx_seq;
+                $cur_barcode = $idx_seq;
+            }
+
             my $has_match = exists $$barcode_table{$cur_barcode} ? 1 : 0;
 
             ( $cur_barcode, $has_match )
@@ -284,8 +308,10 @@ sub split_trim_barcodes {
 
             $barcodes_obs{$cur_barcode}++;
             if ($has_match) {
-                $seq  = substr $seq, $barcode_length + 1 unless $notrim;
-                $qual = substr $qual, $barcode_length + 1 unless $notrim;
+                if ( !$indexed && !$notrim ) {
+                    $seq  = substr $seq,  $barcode_length + 1;
+                    $qual = substr $qual, $barcode_length + 1;
+                }
                 print { $$barcode_table{$cur_barcode}->{fh} }
                   $read_id . $seq . $qual_id . $qual
                   unless $stats;
@@ -298,6 +324,9 @@ sub split_trim_barcodes {
                 $total_unmatched++;
             }
         }
+
+        close $fq_in_fh;
+        close $fq_idx_in_fh if $indexed;
     }
 
     return $total_matched, $total_unmatched, \%barcodes_obs;
