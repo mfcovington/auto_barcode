@@ -14,6 +14,7 @@ use feature 'say';
 use Getopt::Long;
 use File::Basename;
 use File::Path 'make_path';
+use List::MoreUtils 'part';
 use List::Util qw(min max);
 use Statistics::Descriptive;
 use Statistics::R;
@@ -28,8 +29,9 @@ my $current_version = "v1.5.0";
 
 #options/defaults
 my $mismatches_ok = 0;
-my ($barcode, $id,         $list,       $outdir, $notrim,
-    $stats,   $autoprefix, $autosuffix, $help,   $version
+my ($barcode,     $id,     $list,  $outdir,
+    $indexed, $notrim, $stats, $autoprefix,
+    $autosuffix,  $help,   $version
 );
 my $prefix  = "";
 my $suffix  = "";
@@ -39,6 +41,7 @@ my $options = GetOptions(
     "list"         => \$list,
     "mismatches=s" => \$mismatches_ok,
     "outdir=s"     => \$outdir,
+    "indexed"      => \$indexed,
     "autoprefix"   => \$autoprefix,
     "prefix=s"     => \$prefix,
     "suffix=s"     => \$suffix,
@@ -48,17 +51,19 @@ my $options = GetOptions(
     "help"         => \$help,
     "version"      => \$version,
 );
-my @fq_files = grep { /f(ast)?q$/i } @ARGV;
+my @all_fq_files = grep { /f(ast)?q$/i } @ARGV;
+my ( $fq_files, $fq_indexes )
+    = $indexed ? part { my $i++ % 2 } @all_fq_files : \@all_fq_files;
 
 validate_options( $version, $help, $barcode, $id, $list, $mismatches_ok,
-    \@fq_files );
+    $fq_files, $fq_indexes, $indexed );
 
 my $barcode_table = get_barcodes( $list, $barcode, $id );
 
 my $barcode_length = validate_barcodes($barcode_table);
 
 my ( $directory, $filename, $barcode_name )
-    = parse_filenames( \@fq_files, $outdir, $barcode );
+    = parse_filenames( $fq_files, $outdir, $barcode );
 
 make_path($directory);
 
@@ -67,8 +72,8 @@ my $unmatched_fh
                    $prefix, $suffix, $autoprefix, $autosuffix ) unless $stats;
 
 my ( $total_matched, $total_unmatched, $barcodes_obs )
-    = split_trim_barcodes( \@fq_files, $barcode_table, $barcode_length,
-                           $unmatched_fh, $notrim, $stats );
+    = split_trim_barcodes( $fq_files, $fq_indexes, $indexed,
+    $barcode_table, $barcode_length, $unmatched_fh, $notrim, $stats );
 
 close_fq_fhs( $barcode_table, $unmatched_fh ) unless $stats;
 
@@ -80,7 +85,7 @@ summarize_observed_barcodes(
 );
 
 summarize_counts(
-    $barcode_table, \@fq_files, $total_count,
+    $barcode_table, $fq_files, $total_count,
     $total_matched, $total_unmatched, $directory, $filename, $barcode_name
 );
 
@@ -105,8 +110,10 @@ sub commify {
 }
 
 sub validate_options {
-    my ( $version, $help, $barcode, $id, $list, $mismatches_ok, $fq_files )
-        = @_;
+    my ($version,  $help,       $barcode,
+        $id,       $list,       $mismatches_ok,
+        $fq_files, $fq_indexes, $indexed
+    ) = @_;
 
     die "$current_version\n" if $version;
 
@@ -124,7 +131,10 @@ sub validate_options {
       unless $mismatches_ok =~ /^\d+$/;
     print_usage()
       and die "ERROR: Missing path to FASTQ file(s).\n"
-      unless scalar $fq_files > 0;
+      unless scalar @$fq_files > 0;
+    print_usage()
+      and die "ERROR: Number of FASTQ files must equal number of index files when using '--indexed'.\n"
+      if $indexed && scalar @$fq_files != scalar @$fq_indexes;
 }
 
 sub print_usage {
@@ -142,9 +152,11 @@ DESCRIPTION
 OPTIONS
   -h, --help                 Print this help message
   -v, --version              Print version number
-  -i, --id                   Sample or Experiment ID
+  --id                       Sample or Experiment ID
   -b, --barcode   BARCODE    Specify barcode or file w/ list of barcodes to extract
   -l, --list                 Indicate BARCODE is a list of barcodes in a file
+  --indexed                  Samples designated by index sequences
+                              Alternate read FQ files and index FQ files
   -m, --mismatches           Minimum number of mismatches allowed in barcode sequence [0]
   -n, --notrim               Split without trimming barcodes
   -st, --stats               Output summary stats only (w/o creating fastq files)
@@ -249,15 +261,23 @@ sub open_fq_fhs {
 }
 
 sub split_trim_barcodes {
-    my ( $fq_files, $barcode_table, $barcode_length, $unmatched_fh, $notrim,
-        $stats )
+    my ( $fq_files, $fq_indexes, $indexed, $barcode_table, $barcode_length,
+        $unmatched_fh, $notrim, $stats )
         = @_;
 
     my $total_matched   = 0;
     my $total_unmatched = 0;
     my %barcodes_obs;
-    for my $fq_in (@$fq_files) {
-        open my $fq_in_fh, "<", $fq_in;
+
+    for my $i ( 0 .. $#$fq_files ) {
+
+        my $fq_in     = $$fq_files[$i];
+        # my $fq_idx_in = $$fq_files[$i] if $indexed;
+        my $fq_idx_in = $$fq_indexes[$i] if $indexed;
+
+        open my $fq_in_fh,     "<", $fq_in;
+        open my $fq_idx_in_fh, "<", $fq_idx_in if $indexed;
+
         while ( my $read_id = <$fq_in_fh> ) {
             my $line_no = $.;
             my $seq     = <$fq_in_fh>;
@@ -266,6 +286,22 @@ sub split_trim_barcodes {
             validate_fq_read( $read_id, $seq, $qual, $fq_in, $line_no);
 
             my $cur_barcode = substr $seq, 0, $barcode_length;
+
+            if ($indexed) {
+                my $idx_read_id = <$fq_idx_in_fh>;
+                my $idx_line_no = $.;
+                my $idx_seq     = <$fq_idx_in_fh>;
+                my $idx_qual_id = <$fq_idx_in_fh>;
+                my $idx_qual    = <$fq_idx_in_fh>;
+                validate_fq_read(
+                    $idx_read_id, $idx_seq, $idx_qual,
+                    $fq_idx_in,   $idx_line_no
+                );
+
+                chomp $idx_seq;
+                $cur_barcode = $idx_seq;
+            }
+
             my $has_match = exists $$barcode_table{$cur_barcode} ? 1 : 0;
 
             ( $cur_barcode, $has_match )
@@ -274,8 +310,10 @@ sub split_trim_barcodes {
 
             $barcodes_obs{$cur_barcode}++;
             if ($has_match) {
-                $seq  = substr $seq, $barcode_length + 1 unless $notrim;
-                $qual = substr $qual, $barcode_length + 1 unless $notrim;
+                if ( !$indexed && !$notrim ) {
+                    $seq  = substr $seq,  $barcode_length + 1;
+                    $qual = substr $qual, $barcode_length + 1;
+                }
                 print { $$barcode_table{$cur_barcode}->{fh} }
                   $read_id . $seq . $qual_id . $qual
                   unless $stats;
@@ -288,6 +326,9 @@ sub split_trim_barcodes {
                 $total_unmatched++;
             }
         }
+
+        close $fq_in_fh;
+        close $fq_idx_in_fh if $indexed;
     }
 
     return $total_matched, $total_unmatched, \%barcodes_obs;
