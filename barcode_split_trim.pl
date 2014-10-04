@@ -152,9 +152,11 @@ DESCRIPTION
 OPTIONS
   -h, --help                 Print this help message
   -v, --version              Print version number
-  -i, --id                   Sample or Experiment ID
+  --id                       Sample or Experiment ID
   -b, --barcode   BARCODE    Specify barcode or file w/ list of barcodes to extract
   -l, --list                 Indicate BARCODE is a list of barcodes in a file
+  --indexed                  Samples designated by index sequences
+                              Alternate read FQ files and index FQ files
   -m, --mismatches           Minimum number of mismatches allowed in barcode sequence [0]
   -n, --notrim               Split without trimming barcodes
   -st, --stats               Output summary stats only (w/o creating fastq files)

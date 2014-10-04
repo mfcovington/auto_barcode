@@ -22,9 +22,11 @@ The following can be accessed by running `./barcode_split_trim.pl --help`:
     OPTIONS
       -h, --help                 Print this help message
       -v, --version              Print version number
-      -i, --id                   Sample or Experiment ID
       -b, --barcode   BARCODE    Specify barcode or list of barcodes to extract
       -l, --list                 Indicates --barcode is a list of barcodes in a file
+      --id                       Sample or Experiment ID
+      --indexed                  Samples designated by index sequences
+                                  Alternate read FQ files and index FQ files
       -m, --mismatches           Minimum number of mismatches allowed in barcode sequence [0]
       -n, --notrim               Split without trimming barcodes off
       -st, --stats               Output summary stats only (w/o creating fastq files)
