@@ -25,7 +25,7 @@ use Text::Table;
 # TODO: fuzzy matching
 # TODO: Change 'matched/unmatched' to 'expected/unexpected'
 
-my $current_version = "v1.5.0";
+my $current_version = "v2.0.0";
 
 #options/defaults
 my $mismatches_ok = 0;
