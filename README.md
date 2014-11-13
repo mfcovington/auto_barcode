@@ -22,10 +22,13 @@ The following can be accessed by running `./barcode_split_trim.pl --help`:
     OPTIONS
       -h, --help                 Print this help message
       -v, --version              Print version number
-      -i, --id                   Sample or Experiment ID
-      -b, --barcode   BARCODE    Specify barcode or list of barcodes to extract
-      -l, --list                 Indicates --barcode is a list of barcodes in a file
-      -n, --notrim               Split without trimming barcodes off
+      --id                       Sample or Experiment ID
+      -b, --barcode   BARCODE    Specify barcode or file w/ list of barcodes to extract
+      -l, --list                 Indicate BARCODE is a list of barcodes in a file
+      --indexed                  Samples designated by index sequences
+                                  Alternate read FQ files and index FQ files
+      -m, --mismatches           Minimum number of mismatches allowed in barcode sequence [0]
+      -n, --notrim               Split without trimming barcodes
       -st, --stats               Output summary stats only (w/o creating fastq files)
       -o, --outdir    DIR        Output file is saved in the specified directory
                                   (or same directory as IN.FASTQ, if --outdir is not used)
@@ -165,8 +168,8 @@ The [second log file][LOG2] returns counts and percentages for all observed barc
     GGTCC      27 0.1%
     GGATT      15 0.1%
     NAGAG      11 0.0%
-    TCTAT      11 0.0%
     NAGTC      11 0.0%
+    TCTAT      11 0.0%
 
 
 ### Plotting barcode splitting summary
