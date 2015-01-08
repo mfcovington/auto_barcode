@@ -29,9 +29,9 @@ my $current_version = "v2.0.0";
 
 #options/defaults
 my $mismatches_ok = 0;
-my ($barcode,     $id,     $list,  $outdir,
-    $indexed, $notrim, $stats, $autoprefix,
-    $autosuffix,  $help,   $version
+my ($barcode,    $id,         $list,   $outdir,
+    $indexed,    $noplot,     $notrim, $stats,
+    $autoprefix, $autosuffix, $help,   $version
 );
 my $prefix  = "";
 my $suffix  = "";
@@ -46,6 +46,7 @@ my $options = GetOptions(
     "prefix=s"     => \$prefix,
     "suffix=s"     => \$suffix,
     "autosuffix"   => \$autosuffix,
+    "noplot"       => \$noplot,
     "notrim"       => \$notrim,
     "stats"        => \$stats,
     "help"         => \$help,
@@ -89,7 +90,7 @@ summarize_counts(
     $total_matched, $total_unmatched, $directory, $filename, $barcode_name
 );
 
-plot_summary( $barcodes_obs, $barcode_table, $directory, $id );
+plot_summary( $barcodes_obs, $barcode_table, $directory, $id ) unless $noplot;
 
 exit;
 
