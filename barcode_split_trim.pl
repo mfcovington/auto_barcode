@@ -339,12 +339,17 @@ sub validate_fq_read {
     my ( $read_id, $seq, $qual, $fq_in, $line_no ) = @_;
 
     die chomp $read_id
+        && "Encountered incomplete read ($read_id) at line $line_no of FASTQ file: '$fq_in'...\nInvalid or corrupt FASTQ file?\n"
+        unless defined $qual;
+    die chomp $read_id
         && "Encountered sequence ID ($read_id) that doesn't start with '\@' on line $line_no of FASTQ file: '$fq_in'...\nInvalid or corrupt FASTQ file?\n"
         unless $read_id =~ /^@/;
     die chomp $read_id
         && "Encountered unequal sequence and quality lengths for read ($read_id) near line $line_no of FASTQ file: '$fq_in'...\nInvalid or corrupt FASTQ file?\n"
         unless length $seq == length $qual;
-    die chomp $read_id && chomp $seq && "Encountered sequence ($seq) containing non-nucleotide characters. See read ($read_id) starting on line $line_no of FASTQ file: '$fq_in'...\nInvalid or corrupt FASTQ file?\n"
+    die chomp $read_id
+        && chomp $seq
+        && "Encountered sequence ($seq) containing non-nucleotide characters. See read ($read_id) starting on line $line_no of FASTQ file: '$fq_in'...\nInvalid or corrupt FASTQ file?\n"
         unless $seq =~ /^[ACGTN]+$/i;
 }
 
