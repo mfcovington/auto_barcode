@@ -176,8 +176,8 @@ OUTPUT
   customized using the Naming Options.
 
 EXAMPLES
-  $prog -b GACTG -i Charlotte kitten_DNA.fq
-  $prog --barcode barcode.file --list *_DNA.fastq
+  $prog -i Charlotte -b GACTG kitten_DNA.fq
+  $prog --id BigExperiment --barcode barcode.file --list *_DNA.fastq
   $prog --help
 
 EOF
