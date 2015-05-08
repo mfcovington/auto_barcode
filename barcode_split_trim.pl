@@ -255,6 +255,7 @@ sub open_fq_fhs {
             . $prefix
             . $$barcode_table{$_}->{id}
             . $temp_suffix . ".fq";
+        $fq_out =~ s/\s/_/g;
         open $$barcode_table{$_}->{fh}, ">", $fq_out;
     }
 
