@@ -191,8 +191,9 @@ sub get_barcodes {
         open my $barcode_list_fh, '<', $barcode;
         %barcode_table =
           map {
-            chomp;
-            my @delim = split /\t/;
+            my $barcode_data = $_;
+            $barcode_data =~ s/\r?\n$//;    # Add compatibility for CRLF lines
+            my @delim = split /\t/, $barcode_data;
             ( $delim[0], { 'id' => $delim[1], 'count' => 0 } )
           } <$barcode_list_fh>;
         close $barcode_list_fh;
