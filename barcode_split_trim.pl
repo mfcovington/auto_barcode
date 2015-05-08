@@ -24,7 +24,7 @@ use Text::Table;
 # TODO: incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
 # TODO: Change 'matched/unmatched' to 'expected/unexpected'
 
-my $current_version = "v2.1.1";
+my $current_version = "v2.1.2";
 
 #options/defaults
 my $mismatches_ok = 0;
@@ -176,8 +176,8 @@ OUTPUT
   customized using the Naming Options.
 
 EXAMPLES
-  $prog -b GACTG -i Charlotte kitten_DNA.fq
-  $prog --barcode barcode.file --list *_DNA.fastq
+  $prog -i Charlotte -b GACTG kitten_DNA.fq
+  $prog --id BigExperiment --barcode barcode.file --list *_DNA.fastq
   $prog --help
 
 EOF
@@ -191,8 +191,9 @@ sub get_barcodes {
         open my $barcode_list_fh, '<', $barcode;
         %barcode_table =
           map {
-            chomp;
-            my @delim = split /\t/;
+            my $barcode_data = $_;
+            $barcode_data =~ s/\r?\n$//;    # Add compatibility for CRLF lines
+            my @delim = split /\t/, $barcode_data;
             ( $delim[0], { 'id' => $delim[1], 'count' => 0 } )
           } <$barcode_list_fh>;
         close $barcode_list_fh;
@@ -254,6 +255,7 @@ sub open_fq_fhs {
             . $prefix
             . $$barcode_table{$_}->{id}
             . $temp_suffix . ".fq";
+        $fq_out =~ s/\s/_/g;
         open $$barcode_table{$_}->{fh}, ">", $fq_out;
     }
 
