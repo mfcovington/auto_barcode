@@ -193,8 +193,10 @@ sub get_barcodes {
           map {
             my $barcode_data = $_;
             $barcode_data =~ s/\r?\n$//;    # Add compatibility for CRLF lines
-            my @delim = split /\t/, $barcode_data;
-            ( $delim[0], { 'id' => $delim[1], 'count' => 0 } )
+            my ( $barcode, $barcode_name ) = split /\t/, $barcode_data;
+            die "ERROR: The barcode file must be tab-delimited.\n"
+                unless defined $barcode_name;
+            ( $barcode, { 'id' => $barcode_name, 'count' => 0 } );
           } <$barcode_list_fh>;
         close $barcode_list_fh;
     }
