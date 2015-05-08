@@ -198,3 +198,4 @@ For this plot (saved to `sample_files/output/demo.barcodes.png`), barcodes are s
 
 [barcode_plot]: https://github.com/mfcovington/auto_barcode/blob/master/barcode_plot.R
 
+*Version 2.1.2*

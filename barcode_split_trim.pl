@@ -24,7 +24,7 @@ use Text::Table;
 # TODO: incorporate more 'barcode_psychic.pl' functionality (warnings/suggestions)
 # TODO: Change 'matched/unmatched' to 'expected/unexpected'
 
-my $current_version = "v2.1.1";
+my $current_version = "v2.1.2";
 
 #options/defaults
 my $mismatches_ok = 0;
